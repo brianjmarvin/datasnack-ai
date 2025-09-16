@@ -1,0 +1,7 @@
+{
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "apiKey": "",
+  "baseURL": "",
+  "maxTokens": 4000
+}
