@@ -37,7 +37,7 @@ The AI Agent Evaluator CLI is a powerful tool that:
 
 1. **Clone the repository:**
 ```bash
-git clone <repository-url>
+git clone https://github.com/brianjmarvin/datasnack-ai.git
 cd code-check-cli
 ```
 
