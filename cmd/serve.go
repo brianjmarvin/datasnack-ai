@@ -16,9 +16,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type TestConfiguration struct {
+	DataLeakageTests     int `json:"dataLeakageTests"`
+	PromptInjectionTests int `json:"promptInjectionTests"`
+	ConsistencyTests     int `json:"consistencyTests"`
+	IterationsPerTest    int `json:"iterationsPerTest"`
+}
+
 type AgentDetails struct {
-	AgentPurpose string   `json:"agentPurpose"`
-	Prompts      []string `json:"prompts"`
+	AgentPurpose      string            `json:"agentPurpose"`
+	TestConfiguration TestConfiguration `json:"testConfiguration"`
 }
 
 type PythonAgentConfig struct {
@@ -55,14 +62,10 @@ based on performance results.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load required environment variables
 		configPath := os.Getenv("AGENT_CONFIG")
-		testsPath := os.Getenv("TESTS_FILE")
 		agentDetails := os.Getenv("AGENT_DETAILS")
 
 		if configPath == "" {
 			configPath = "config/agentConfig.json"
-		}
-		if testsPath == "" {
-			testsPath = "config/tests.json"
 		}
 		if agentDetails == "" {
 			agentDetails = "config/agentDetails.json"
@@ -90,19 +93,6 @@ based on performance results.`,
 			log.Fatalln("Failed to unmarshal agent details file:", err)
 		}
 
-		// Read tests file
-		type Tests struct {
-			AllTests []string `json:"allTests"`
-		}
-		var tests Tests
-		dataT, err := os.ReadFile(testsPath)
-		if err != nil {
-			log.Fatalln("Failed to read tests file:", err)
-		}
-		if err := json.Unmarshal(dataT, &tests); err != nil {
-			log.Fatalln("Failed to unmarshal tests file:", err)
-		}
-
 		// Initialize AI client based on configuration and available keys
 		ai, err := initializeAIClient()
 		if err != nil {
@@ -118,8 +108,12 @@ based on performance results.`,
 				TrackingEnabled: agentConfig.TrackingEnabled,
 			},
 			aiAgentDetails.AgentPurpose,
-			&aiAgentDetails.Prompts,
-			&tests.AllTests,
+			cloneAttack.TestConfiguration{
+				DataLeakageTests:     aiAgentDetails.TestConfiguration.DataLeakageTests,
+				PromptInjectionTests: aiAgentDetails.TestConfiguration.PromptInjectionTests,
+				ConsistencyTests:     aiAgentDetails.TestConfiguration.ConsistencyTests,
+				IterationsPerTest:    aiAgentDetails.TestConfiguration.IterationsPerTest,
+			},
 		)
 
 		// Run comprehensive evaluation

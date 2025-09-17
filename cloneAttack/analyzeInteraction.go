@@ -29,6 +29,8 @@ type Vulnerability struct {
 	Description string
 	CallID      string
 	Score       float64
+	Response    string
+	Prompt      string
 }
 
 // Message represents a single interaction in the conversation
