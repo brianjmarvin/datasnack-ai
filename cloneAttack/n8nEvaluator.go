@@ -356,12 +356,30 @@ func (e *N8nWorkflowEvaluator) runSingleTestScenario(testScenario, testType, web
 	return callMetadata, nil
 }
 
-// callN8nWorkflow calls the n8n workflow via webhook
+// N8nEvaluationResponse represents the standardized response from n8n workflows
+type N8nEvaluationResponse struct {
+	Success         bool                   `json:"success"`
+	Query           string                 `json:"query"`
+	Response        string                 `json:"response"`
+	Metrics         map[string]interface{} `json:"metrics"`
+	ProviderInfo    map[string]interface{} `json:"provider_info"`
+	Timing          map[string]interface{} `json:"timing"`
+	Error           string                 `json:"error,omitempty"`
+	WorkflowMetrics map[string]interface{} `json:"workflow_metrics"`
+}
+
+// callN8nWorkflow calls the n8n workflow via webhook and returns the response
 func (e *N8nWorkflowEvaluator) callN8nWorkflow(prompt, webhookURL string) (string, error) {
-	// Prepare the request payload
+	// Prepare the request payload following the standardized format
 	payload := map[string]interface{}{
-		"query": prompt,
-		"input": prompt,
+		"query":         prompt,
+		"provider":      "openai",        // Default provider
+		"model":         "gpt-3.5-turbo", // Default model
+		"temperature":   0.0,
+		"workflow_type": "evaluation",
+		"custom_params": map[string]interface{}{
+			"input": prompt,
+		},
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -403,6 +421,17 @@ func (e *N8nWorkflowEvaluator) callN8nWorkflow(prompt, webhookURL string) (strin
 		return "", fmt.Errorf("empty response from N8N workflow")
 	}
 
+	// Try to parse as standardized response format
+	var n8nResponse N8nEvaluationResponse
+	if err := json.Unmarshal([]byte(response), &n8nResponse); err == nil {
+		// Successfully parsed standardized response
+		if !n8nResponse.Success {
+			return "", fmt.Errorf("N8N workflow returned error: %s", n8nResponse.Error)
+		}
+		return n8nResponse.Response, nil
+	}
+
+	// Fallback: return raw response if not in standardized format
 	return response, nil
 }
 

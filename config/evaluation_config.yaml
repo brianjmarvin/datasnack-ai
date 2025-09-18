@@ -1,0 +1,208 @@
+# AI Evaluation Endpoints Configuration
+# GPT-Researcher Evaluation Service Configuration
+
+service:
+  name: "GPT-Researcher AI Evaluation Service"
+  version: "1.0.0"
+  description: "Provider-agnostic AI evaluation endpoints for CLI testing"
+  base_url: "http://localhost:8000"
+
+endpoints:
+  health:
+    path: "/api/evaluation/health"
+    method: "GET"
+    description: "Health check endpoint for evaluation service"
+    response_schema: "HealthCheckResponse"
+    
+  single_evaluation:
+    path: "/api/evaluation/evaluate"
+    method: "POST"
+    description: "Evaluate a single AI query and return essential metrics"
+    request_schema: "EvaluationRequest"
+    response_schema: "EvaluationResponse"
+    ai_pathway: "Query Processing, Research Execution, Response Generation, Source Validation"
+    
+  batch_evaluation:
+    path: "/api/evaluation/evaluate/batch"
+    method: "POST"
+    description: "Evaluate multiple AI queries and return aggregate metrics"
+    request_schema: "BatchEvaluationRequest"
+    response_schema: "BatchEvaluationResponse"
+    ai_pathway: "Batch Query Processing, Research Execution, Response Generation, Aggregate Analysis"
+    
+  providers:
+    path: "/api/evaluation/providers"
+    method: "GET"
+    description: "List all supported AI providers and their capabilities"
+    response_schema: "List[ProviderInfo]"
+    
+  metrics_schema:
+    path: "/api/evaluation/metrics/schema"
+    method: "GET"
+    description: "Get the schema for quantitative evaluation metrics"
+    response_schema: "MetricsSchema"
+    
+  config:
+    path: "/api/evaluation/config"
+    method: "GET"
+    description: "Get evaluation service configuration and capabilities"
+    response_schema: "Dict[str, Any]"
+    
+  streaming_evaluation:
+    path: "/api/evaluation/evaluate/stream"
+    method: "POST"
+    description: "Evaluate a single AI query with streaming response (future implementation)"
+    request_schema: "EvaluationRequest"
+    response_schema: "EvaluationResponse"
+
+cli_examples:
+  health_check:
+    curl: |
+      curl -X GET "http://localhost:8000/api/evaluation/health" \
+        -H "Accept: application/json"
+    
+  single_evaluation:
+    curl: |
+      curl -X POST "http://localhost:8000/api/evaluation/evaluate" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "query": "What is the capital of France?",
+          "provider": "openai",
+          "model": "gpt-4-turbo",
+          "temperature": 0.0,
+          "report_type": "research_report",
+          "report_source": "web",
+          "tone": "objective"
+        }'
+    
+  batch_evaluation:
+    curl: |
+      curl -X POST "http://localhost:8000/api/evaluation/evaluate/batch" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "queries": [
+            "What is the capital of France?",
+            "What is the population of Tokyo?",
+            "Who wrote Romeo and Juliet?"
+          ],
+          "provider": "openai",
+          "model": "gpt-4-turbo",
+          "temperature": 0.0,
+          "parallel": false
+        }'
+    
+  list_providers:
+    curl: |
+      curl -X GET "http://localhost:8000/api/evaluation/providers" \
+        -H "Accept: application/json"
+    
+  get_metrics_schema:
+    curl: |
+      curl -X GET "http://localhost:8000/api/evaluation/metrics/schema" \
+        -H "Accept: application/json"
+
+usage_notes:
+  authentication:
+    description: "No authentication required for evaluation endpoints"
+    note: "In production, consider adding API key authentication"
+    
+  rate_limiting:
+    description: "No rate limiting implemented"
+    note: "Consider implementing rate limiting for production use"
+    
+  error_handling:
+    description: "Comprehensive error handling with detailed error messages"
+    common_errors:
+      - "400: Bad Request - Invalid request parameters"
+      - "500: Internal Server Error - Evaluation service error"
+      - "422: Unprocessable Entity - Validation error"
+    
+  performance:
+    description: "Evaluation performance considerations"
+    notes:
+      - "Single evaluations typically take 30-120 seconds depending on query complexity"
+      - "Batch evaluations can be run in parallel for better performance"
+      - "Response times depend on AI provider and model selection"
+      - "Web scraping and research phases are the most time-consuming"
+    
+  metrics_interpretation:
+    description: "How to interpret evaluation metrics"
+    key_metrics:
+      - "response_time: Total time for complete evaluation"
+      - "research_time: Time spent gathering information"
+      - "report_time: Time spent generating final report"
+      - "source_count: Number of sources used (higher is generally better)"
+      - "has_citations: Whether response includes source citations"
+      - "has_structure: Whether response has proper formatting"
+    
+  best_practices:
+    description: "Best practices for using evaluation endpoints"
+    recommendations:
+      - "Use temperature=0.0 for consistent, deterministic results"
+      - "Set appropriate timeout values for long-running evaluations"
+      - "Use batch evaluation for testing multiple queries efficiently"
+      - "Monitor success_rate in batch evaluations to identify issues"
+      - "Check has_content and has_citations for response quality"
+      - "Use parallel processing for batch evaluations when possible"
+
+provider_configuration:
+  openai:
+    description: "OpenAI provider configuration"
+    required_env_vars:
+      - "OPENAI_API_KEY"
+    supported_models:
+      - "gpt-4-turbo"
+      - "gpt-4o"
+      - "gpt-4o-mini"
+      - "gpt-3.5-turbo"
+    capabilities:
+      - "text_generation"
+      - "research"
+      - "report_generation"
+      - "reasoning_effort"
+    
+  anthropic:
+    description: "Anthropic provider configuration"
+    required_env_vars:
+      - "ANTHROPIC_API_KEY"
+    supported_models:
+      - "claude-3-opus"
+      - "claude-3-sonnet"
+      - "claude-3-haiku"
+    capabilities:
+      - "text_generation"
+      - "research"
+      - "report_generation"
+    
+  azure_openai:
+    description: "Azure OpenAI provider configuration"
+    required_env_vars:
+      - "AZURE_OPENAI_ENDPOINT"
+      - "AZURE_OPENAI_API_KEY"
+      - "AZURE_OPENAI_API_VERSION"
+    supported_models:
+      - "gpt-4-turbo"
+      - "gpt-4o"
+      - "gpt-3.5-turbo"
+    capabilities:
+      - "text_generation"
+      - "research"
+      - "report_generation"
+
+evaluation_workflow:
+  description: "AI evaluation workflow explanation"
+  steps:
+    1: "Query Processing: Analyze and plan research approach"
+    2: "Research Execution: Gather information from web sources"
+    3: "Content Aggregation: Compile and validate information"
+    4: "Response Generation: Create structured report with citations"
+    5: "Metrics Collection: Calculate quantitative performance metrics"
+    6: "Response Formatting: Package results for CLI consumption"
+  
+  ai_pathways_tested:
+    - "Query Processing: Research query analysis and planning"
+    - "Research Execution: Web scraping and content aggregation"
+    - "Response Generation: Report generation with citations"
+    - "Source Validation: URL and content verification"
+    - "Batch Processing: Multiple query handling and aggregation"
+    - "Error Handling: Graceful failure and error reporting"

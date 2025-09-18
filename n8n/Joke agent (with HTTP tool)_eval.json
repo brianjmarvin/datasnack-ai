@@ -27,7 +27,8 @@
       "main": [
         [
           {
-            "node": "Webhook Response",
+            "index": 0,
+            "node": "Metrics Calculation",
             "type": "main"
           }
         ]
@@ -44,6 +45,17 @@
         ]
       ]
     },
+    "Metrics Calculation": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Webhook Response (CLI)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Model": {
       "ai_languageModel": [
         [
@@ -55,12 +67,23 @@
         ]
       ]
     },
-    "Webhook Trigger": {
+    "Prepare Evaluation Request": {
       "main": [
         [
           {
             "index": 0,
             "node": "Joke agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (CLI Evaluation)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Prepare Evaluation Request",
             "type": "main"
           }
         ]
@@ -73,10 +96,9 @@
     "templateCredsSetupCompleted": true,
     "templateId": "joke_agent_with_http_tool"
   },
-  "name": "Joke agent (with HTTP tool)",
+  "name": "Joke agent (with HTTP tool) - CLI Evaluation",
   "nodes": [
     {
-      "disabled": true,
       "id": "10870665-8098-49d9-b36a-843227a25ec8",
       "name": "When chat message received",
       "parameters": {
@@ -199,42 +221,71 @@
       "typeVersion": 1
     },
     {
-      "id": "d0d0d0d0-0000-0000-0000-000000000001",
-      "name": "Webhook Trigger",
+      "id": "webhook-trigger-cli",
+      "name": "Webhook Trigger (CLI Evaluation)",
       "parameters": {
         "httpMethod": "POST",
-        "options": {
-          "rawBody": true
-        },
+        "options": {},
         "path": "evaluate",
         "responseMode": "responseNode"
       },
       "position": [
-        -800,
-        0
+        -1200,
+        400
       ],
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1.1,
-      "webhookId": "unique-webhook-id"
+      "typeVersion": 1
     },
     {
-      "id": "d0d0d0d0-0000-0000-0000-000000000002",
-      "name": "Webhook Response",
+      "id": "prepare-evaluation-request",
+      "name": "Prepare Evaluation Request",
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json }}",
-        "responseHeaders": {
-          "headers": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        }
+        "jsCode": "// Prepare evaluation request data from webhook\nconst webhookData = $input.first().json;\nconst startTime = Date.now();\n\n// Extract request parameters\nconst requestData = {\n  query: webhookData.query || webhookData.body?.query || 'Test workflow execution',\n  provider: webhookData.provider || 'openai',\n  model: webhookData.model || 'gpt-3.5-turbo',\n  temperature: webhookData.temperature || 0.0,\n  workflow_type: webhookData.workflow_type || 'general',\n  custom_params: webhookData.custom_params || {},\n  start_time: startTime,\n  request_id: webhookData.request_id || `eval_${startTime}`\n};\n\n// Create test data for your specific workflow\nconst testData = {\n  input_text: requestData.query,\n  input_data: requestData.custom_params,\n  evaluation_request: requestData\n};\n\nreturn { json: testData };"
+      },
+      "position": [
+        -1000,
+        400
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1
+    },
+    {
+      "id": "metrics-calculation",
+      "name": "Metrics Calculation",
+      "parameters": {
+        "jsCode": "// Calculate evaluation metrics for CLI response\nconst inputData = $input.first().json;\nconst endTime = Date.now();\n\n// Get original request data\nconst originalData = $('Prepare Evaluation Request').item.json;\nconst requestData = originalData.evaluation_request;\nconst startTime = requestData.start_time;\n\n// Calculate timing metrics\nconst totalTime = (endTime - startTime) / 1000;\nconst responseTime = totalTime;\n\n// Extract response content - customize based on workflow output\nlet responseContent = '';\nif (inputData.choices \u0026\u0026 inputData.choices[0] \u0026\u0026 inputData.choices[0].message) {\n  responseContent = inputData.choices[0].message.content || '';\n} else if (inputData.body) {\n  responseContent = inputData.body || '';\n} else if (inputData.result) {\n  responseContent = inputData.result || '';\n} else if (inputData.output) {\n  responseContent = inputData.output || '';\n} else if (typeof inputData === 'string') {\n  responseContent = inputData;\n} else {\n  responseContent = JSON.stringify(inputData);\n}\n\n// Calculate content metrics\nconst responseLength = responseContent.length;\nconst wordCount = responseContent.split(/\\s+/).filter(word =\u003e word.length \u003e 0).length;\nconst characterCount = responseContent.length;\nconst hasContent = responseLength \u003e 0;\n\n// Count nodes executed\nconst nodesExecuted = Object.keys($).length;\n\n// Create standardized evaluation response\nconst evaluationResponse = {\n  success: true,\n  query: requestData.query,\n  response: responseContent,\n  metrics: {\n    response_time: responseTime,\n    total_time: totalTime,\n    response_length: responseLength,\n    word_count: wordCount,\n    character_count: characterCount,\n    has_content: hasContent,\n    timestamp: new Date().toISOString()\n  },\n  provider_info: {\n    provider: requestData.provider,\n    model: requestData.model,\n    temperature: requestData.temperature.toString(),\n    reasoning_effort: 'medium'\n  },\n  timing: {\n    response_time: responseTime,\n    total_time: totalTime\n  },\n  error: null,\n  workflow_metrics: {\n    workflow_name: 'Joke Agent CLI Evaluation',\n    nodes_executed: nodesExecuted,\n    custom_metrics: {}\n  }\n};\n\nreturn { json: evaluationResponse };"
       },
       "position": [
         -200,
-        0
+        400
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1
+    },
+    {
+      "id": "webhook-response-cli",
+      "name": "Webhook Response (CLI)",
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        },
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "position": [
+        0,
+        400
       ],
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1

@@ -99,8 +99,8 @@ based on performance results.`,
 			log.Fatalln("Failed to initialize AI client:", err)
 		}
 
-		// Initialize clone attack evaluator
-		evaluator := cloneAttack.NewCloneAttack(
+		// Initialize Python agent evaluator using HTTP endpoints
+		evaluator, err := cloneAttack.NewPythonAgentEvaluator(
 			ai,
 			cloneAttack.PythonAgentConfig{
 				PythonPath:      agentConfig.PythonPath,
@@ -114,7 +114,11 @@ based on performance results.`,
 				ConsistencyTests:     aiAgentDetails.TestConfiguration.ConsistencyTests,
 				IterationsPerTest:    aiAgentDetails.TestConfiguration.IterationsPerTest,
 			},
+			"config/evaluation_config.yaml",
 		)
+		if err != nil {
+			log.Fatalln("Failed to initialize Python agent evaluator:", err)
+		}
 
 		// Run comprehensive evaluation
 		results, err := evaluator.RunComprehensiveVulnerabilityTest()

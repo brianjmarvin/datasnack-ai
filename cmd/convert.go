@@ -91,43 +91,236 @@ func convertWorkflowToWebhook(workflow map[string]interface{}) (map[string]inter
 		return nil, fmt.Errorf("failed to marshal workflow for AI analysis: %w", err)
 	}
 
-	// Use AI to analyze the workflow and generate webhook integration
-	aiPrompt := fmt.Sprintf(`You are an expert n8n workflow engineer. Analyze this n8n workflow and add webhook nodes for programmatic execution.
+	// Use AI to analyze the workflow and generate comprehensive webhook integration
+	aiPrompt := fmt.Sprintf(`You are an expert n8n workflow engineer specializing in CLI evaluation instrumentation. Analyze this n8n workflow and add comprehensive webhook-based evaluation capabilities.
 
 Workflow JSON:
 %s
 
-CRITICAL REQUIREMENTS based on previous learnings:
+## Core Requirements for CLI Evaluation Instrumentation
 
-1. WEBHOOK TRIGGER NODE:
-   - Type: n8n-nodes-base.webhook
-   - Method: POST
-   - Path: "evaluate"
-   - responseMode: "responseNode"
-   - options.rawBody: true
+### 1. Endpoint Design Principles
+- **Minimal Response Payload**: Return only essential metrics and response data
+- **Simplified Integration**: Easy for CLI tools to consume
+- **Comprehensive Error Handling**: Graceful failure modes
+- **Provider Agnostic**: Support multiple AI models and services
+- **No Evaluation Logic**: Pure instrumentation - evaluation handled by calling CLI
 
-2. WEBHOOK RESPONSE NODE:
-   - Type: n8n-nodes-base.respondToWebhook
-   - respondWith: "json"
-   - responseBody: "={{ $json }}" (CRITICAL: Use actual workflow data, NOT hardcoded values)
-   - responseHeaders: Content-Type: application/json
+### 2. Essential Response Payload Structure
+The webhook response must follow this standardized format:
+`+"```"+`json
+{
+  "success": boolean,
+  "query": string,
+  "response": string,
+  "metrics": {
+    "response_time": float,
+    "total_time": float,
+    "response_length": int,
+    "word_count": int,
+    "character_count": int,
+    "has_content": boolean,
+    "timestamp": string
+  },
+  "provider_info": {
+    "provider": string,
+    "model": string,
+    "temperature": string,
+    "reasoning_effort": string
+  },
+  "timing": {
+    "response_time": float,
+    "total_time": float
+  },
+  "error": string | null,
+  "workflow_metrics": {
+    "workflow_name": string,
+    "nodes_executed": int,
+    "custom_metrics": object
+  }
+}
+`+"```"+`
 
-3. CONNECTION ANALYSIS:
-   - Identify the ACTUAL final node in the workflow execution chain
-   - Connect the final node to Webhook Response (NOT Webhook Response to itself)
-   - Ensure Webhook Response has NO outgoing connections (empty main array)
-   - Replace or connect to the original trigger node with Webhook Trigger
+### 3. Required Node Structure
 
-4. COMMON ISSUES TO AVOID:
-   - Never hardcode responseBody like "myField": "value"
-   - Never create circular connections (Webhook Response → Webhook Response)
-   - Always use "={{ $json }}" for responseBody to return actual workflow output
-   - Ensure the final workflow node connects to Webhook Response
+#### A. Webhook Trigger Node:
+`+"```"+`json
+{
+  "id": "webhook-trigger-cli",
+  "name": "Webhook Trigger (CLI Evaluation)",
+  "type": "n8n-nodes-base.webhook",
+  "parameters": {
+    "httpMethod": "POST",
+    "path": "evaluate",
+    "responseMode": "responseNode",
+    "options": {}
+  }
+}
+`+"```"+`
 
-5. WORKFLOW FLOW:
-   Webhook Trigger → [existing workflow nodes] → Final Node → Webhook Response
+#### B. Request Preparation Node (Code):
+`+"```"+`javascript
+// Prepare evaluation request data from webhook
+const webhookData = $input.first().json;
+const startTime = Date.now();
 
-Return ONLY the complete modified workflow JSON with proper webhook integration.`, string(workflowJSON))
+// Extract request parameters
+const requestData = {
+  query: webhookData.query || webhookData.body?.query || 'Test workflow execution',
+  provider: webhookData.provider || 'openai',
+  model: webhookData.model || 'gpt-3.5-turbo',
+  temperature: webhookData.temperature || 0.0,
+  workflow_type: webhookData.workflow_type || 'general',
+  custom_params: webhookData.custom_params || {},
+  start_time: startTime,
+  request_id: webhookData.request_id || `+"`"+`eval_${startTime}`+"`"+`
+};
+
+// Create test data for your specific workflow
+const testData = {
+  input_text: requestData.query,
+  input_data: requestData.custom_params,
+  evaluation_request: requestData
+};
+
+return { json: testData };
+`+"```"+`
+
+#### C. Metrics Calculation Node (Code):
+`+"```"+`javascript
+// Calculate evaluation metrics for CLI response
+const inputData = $input.first().json;
+const endTime = Date.now();
+
+// Get original request data
+const originalData = $('Prepare Evaluation Request').item.json;
+const requestData = originalData.evaluation_request;
+const startTime = requestData.start_time;
+
+// Calculate timing metrics
+const totalTime = (endTime - startTime) / 1000;
+const responseTime = totalTime;
+
+// Extract response content - customize based on workflow output
+let responseContent = '';
+if (inputData.choices && inputData.choices[0] && inputData.choices[0].message) {
+  responseContent = inputData.choices[0].message.content || '';
+} else if (inputData.body) {
+  responseContent = inputData.body || '';
+} else if (inputData.result) {
+  responseContent = inputData.result || '';
+} else if (inputData.output) {
+  responseContent = inputData.output || '';
+} else if (typeof inputData === 'string') {
+  responseContent = inputData;
+} else {
+  responseContent = JSON.stringify(inputData);
+}
+
+// Calculate content metrics
+const responseLength = responseContent.length;
+const wordCount = responseContent.split(/\s+/).filter(word => word.length > 0).length;
+const characterCount = responseContent.length;
+const hasContent = responseLength > 0;
+
+// Count nodes executed
+const nodesExecuted = Object.keys($).length;
+
+// Create standardized evaluation response
+const evaluationResponse = {
+  success: true,
+  query: requestData.query,
+  response: responseContent,
+  metrics: {
+    response_time: responseTime,
+    total_time: totalTime,
+    response_length: responseLength,
+    word_count: wordCount,
+    character_count: characterCount,
+    has_content: hasContent,
+    timestamp: new Date().toISOString()
+  },
+  provider_info: {
+    provider: requestData.provider,
+    model: requestData.model,
+    temperature: requestData.temperature.toString(),
+    reasoning_effort: 'medium'
+  },
+  timing: {
+    response_time: responseTime,
+    total_time: totalTime
+  },
+  error: null,
+  workflow_metrics: {
+    workflow_name: 'Your Workflow Name',
+    nodes_executed: nodesExecuted,
+    custom_metrics: {}
+  }
+};
+
+return { json: evaluationResponse };
+`+"```"+`
+
+#### D. Webhook Response Node:
+`+"```"+`json
+{
+  "id": "webhook-response-cli",
+  "name": "Webhook Response (CLI)",
+  "type": "n8n-nodes-base.respondToWebhook",
+  "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ $json }}",
+    "options": {
+      "responseHeaders": {
+        "entries": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      }
+    }
+  }
+}
+`+"```"+`
+
+### 4. Connection Requirements
+- Webhook Trigger → Request Preparation → [existing workflow nodes] → Metrics Calculation → Webhook Response
+- Ensure Webhook Response has NO outgoing connections
+- Connect the final workflow output to Metrics Calculation node
+- Handle errors gracefully with proper error responses
+
+### 5. Workflow-Specific Customizations
+Based on the workflow type, customize the request preparation and metrics calculation:
+- **AI/LLM Workflows**: Handle model parameters, system prompts, max_tokens
+- **Data Processing**: Handle input_data, processing_type, output_format
+- **Email/Communication**: Handle email_type, recipient, subject
+
+### 6. Error Handling
+Include error handling that returns structured error responses following the same format but with success: false and appropriate error messages.
+
+### 7. Success Criteria
+The instrumentation is successful when:
+- Simple queries return real responses (not mock responses)
+- Complex queries return real workflow outputs
+- All metrics are collected accurately
+- Error handling works gracefully
+- CLI integration is straightforward
+
+## Implementation Instructions
+
+1. **Analyze the existing workflow** to understand its structure and purpose
+2. **Add the required nodes** in the correct order
+3. **Create proper connections** between all nodes
+4. **Customize the Code nodes** based on the workflow's specific functionality
+5. **Ensure the response format** matches the standardized structure exactly
+6. **Test error scenarios** to ensure graceful failure handling
+
+Return ONLY the complete modified workflow JSON with proper webhook integration that follows the CLI evaluation instrumentation standards.`, string(workflowJSON))
 
 	// Get AI-generated webhook integration
 	aiResponse, err := ai.GenerateAI(aiPrompt, "", []map[string]string{})
