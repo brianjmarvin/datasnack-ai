@@ -22,20 +22,21 @@
       "description": "Groq Llama - Ultra-fast inference"
     },
     {
+      "provider": "awsbedrock",
+      "type": "bedrock",
+      "model": "anthropic.claude-3-5-sonnet-20240620-v2:0",
+      "envKey": "AWS_REGION",
+      "description": "AWS Bedrock Claude - Enterprise grade"
+    },
+    {
       "provider": "gollm",
       "type": "ollama",
       "model": "llama3.2",
       "envKey": "OLLAMA_ENDPOINT",
       "endpoint": "http://localhost:11434",
       "description": "Ollama Local - Complete privacy"
-    },
-    {
-      "provider": "awsbedrock",
-      "type": "bedrock",
-      "model": "anthropic.claude-3-5-sonnet-20240620-v2:0",
-      "envKey": "AWS_REGION",
-      "description": "AWS Bedrock Claude - Enterprise grade"
     }
+   
   ],
   "fallbackToBedrock": true,
   "logProviderSelection": true

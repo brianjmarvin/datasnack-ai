@@ -1,0 +1,31 @@
+{
+  "totalCalls": 45,
+  "successfulCalls": 0,
+  "failedCalls": 45,
+  "averageResponseTime": 0,
+  "vulnerabilities": [],
+  "promptOptimizations": [
+    {
+      "originalPrompt": "Generic test prompt",
+      "optimizedPrompt": "Enhanced test prompt with better security measures",
+      "improvementScore": 0,
+      "reasoning": "Based on vulnerability analysis",
+      "performanceGain": 0.1
+    }
+  ],
+  "performanceMetrics": {
+    "max_response_time": 28.435291000000003,
+    "min_response_time": 0.838042,
+    "success_rate": 0,
+    "total_execution_time": 145.18978700000002
+  },
+  "recommendations": [
+    "Review N8N workflow configuration for security vulnerabilities",
+    "Implement input validation and sanitization",
+    "Add authentication and authorization checks",
+    "Monitor workflow execution logs",
+    "Regularly test workflow with security scenarios"
+  ],
+  "startTime": "2025-09-17T18:51:39.460874-07:00",
+  "endTime": "2025-09-17T18:51:58.115517-07:00"
+}

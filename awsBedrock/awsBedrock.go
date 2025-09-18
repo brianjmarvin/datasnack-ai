@@ -94,13 +94,19 @@ func (wrapper BedrockClient) GenerateAI(request string, system string, pastMessa
 		},
 	})
 
-	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, &bedrockruntime.ConverseInput{
+	converseInput := &bedrockruntime.ConverseInput{
 		ModelId:  aws.String(modelId),
 		Messages: contentBlocks,
-		System: []types.SystemContentBlock{&types.SystemContentBlockMemberText{
+	}
+
+	// Only add System field if system parameter is not empty
+	if system != "" {
+		converseInput.System = []types.SystemContentBlock{&types.SystemContentBlockMemberText{
 			Value: system,
-		}},
-	})
+		}}
+	}
+
+	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, converseInput)
 
 	if err != nil {
 		return "", fmt.Errorf("model err: %s : %w", modelId, err)
@@ -139,13 +145,19 @@ func (wrapper BedrockClient) AnthropicAI(request any, system string, pastMessage
 		},
 	})
 
-	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, &bedrockruntime.ConverseInput{
+	converseInput := &bedrockruntime.ConverseInput{
 		ModelId:  aws.String(modelId),
 		Messages: contentBlocks,
-		System: []types.SystemContentBlock{&types.SystemContentBlockMemberText{
+	}
+
+	// Only add System field if system parameter is not empty
+	if system != "" {
+		converseInput.System = []types.SystemContentBlock{&types.SystemContentBlockMemberText{
 			Value: system,
-		}},
-	})
+		}}
+	}
+
+	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, converseInput)
 
 	if err != nil {
 		return "", fmt.Errorf("model err: %s : %w", modelId, err)
@@ -224,12 +236,9 @@ func (wrapper BedrockClient) AnthropicAISchema(request any, system string, pastM
 
 	schemaDoc := document.NewLazyDocument(schemaObj)
 
-	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, &bedrockruntime.ConverseInput{
+	converseInput := &bedrockruntime.ConverseInput{
 		ModelId:  aws.String(modelId),
 		Messages: contentBlocks,
-		System: []types.SystemContentBlock{&types.SystemContentBlockMemberText{
-			Value: system,
-		}},
 		ToolConfig: &types.ToolConfiguration{
 			Tools: []types.Tool{
 				&types.ToolMemberToolSpec{
@@ -243,7 +252,16 @@ func (wrapper BedrockClient) AnthropicAISchema(request any, system string, pastM
 				},
 			},
 		},
-	})
+	}
+
+	// Only add System field if system parameter is not empty
+	if system != "" {
+		converseInput.System = []types.SystemContentBlock{&types.SystemContentBlockMemberText{
+			Value: system,
+		}}
+	}
+
+	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, converseInput)
 
 	if err != nil {
 		return "", fmt.Errorf("model err: %s : %w", modelId, err)
@@ -344,12 +362,9 @@ func (wrapper BedrockClient) GenerateAISchema(request string, system string, pas
 
 	schemaDoc := document.NewLazyDocument(schemaObj)
 
-	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, &bedrockruntime.ConverseInput{
+	converseInput := &bedrockruntime.ConverseInput{
 		ModelId:  aws.String(modelId),
 		Messages: contentBlocks,
-		System: []types.SystemContentBlock{&types.SystemContentBlockMemberText{
-			Value: system,
-		}},
 		ToolConfig: &types.ToolConfiguration{
 			Tools: []types.Tool{
 				&types.ToolMemberToolSpec{
@@ -363,7 +378,16 @@ func (wrapper BedrockClient) GenerateAISchema(request string, system string, pas
 				},
 			},
 		},
-	})
+	}
+
+	// Only add System field if system parameter is not empty
+	if system != "" {
+		converseInput.System = []types.SystemContentBlock{&types.SystemContentBlockMemberText{
+			Value: system,
+		}}
+	}
+
+	output, err := wrapper.BedrockRuntimeClient.Converse(ctx, converseInput)
 
 	if err != nil {
 		return "", fmt.Errorf("model err: %s : %w", modelId, err)
