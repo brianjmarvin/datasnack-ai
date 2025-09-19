@@ -27,6 +27,27 @@ type PythonAgentEvaluator struct {
 	httpClient        *http.Client
 }
 
+// SchemaProperty represents a property in a JSON schema
+type SchemaProperty struct {
+	Type        string                 `yaml:"type"`
+	Description string                 `yaml:"description"`
+	Example     interface{}            `yaml:"example"`
+	Default     interface{}            `yaml:"default"`
+	Minimum     *float64               `yaml:"minimum"`
+	Maximum     *float64               `yaml:"maximum"`
+	Enum        []interface{}          `yaml:"enum"`
+	Items       *SchemaProperty        `yaml:"items"`
+	Properties  map[string]interface{} `yaml:"properties"`
+	Required    []string               `yaml:"required"`
+}
+
+// RequestSchema represents the request schema for an endpoint
+type RequestSchema struct {
+	Type       string                    `yaml:"type"`
+	Properties map[string]SchemaProperty `yaml:"properties"`
+	Required   []string                  `yaml:"required"`
+}
+
 // EndpointConfig represents the YAML configuration for AI evaluation endpoints
 type EndpointConfig struct {
 	Service struct {
@@ -42,14 +63,16 @@ type EndpointConfig struct {
 			Description string `yaml:"description"`
 		} `yaml:"health"`
 		SingleEvaluation struct {
-			Path        string `yaml:"path"`
-			Method      string `yaml:"method"`
-			Description string `yaml:"description"`
+			Path          string        `yaml:"path"`
+			Method        string        `yaml:"method"`
+			Description   string        `yaml:"description"`
+			RequestSchema RequestSchema `yaml:"request_schema"`
 		} `yaml:"single_evaluation"`
 		BatchEvaluation struct {
-			Path        string `yaml:"path"`
-			Method      string `yaml:"method"`
-			Description string `yaml:"description"`
+			Path          string        `yaml:"path"`
+			Method        string        `yaml:"method"`
+			Description   string        `yaml:"description"`
+			RequestSchema RequestSchema `yaml:"request_schema"`
 		} `yaml:"batch_evaluation"`
 		Providers struct {
 			Path        string `yaml:"path"`
@@ -59,16 +82,7 @@ type EndpointConfig struct {
 	} `yaml:"endpoints"`
 }
 
-// EvaluationRequest represents a single evaluation request
-type EvaluationRequest struct {
-	Query       string                 `json:"query"`
-	Provider    string                 `json:"provider"`
-	Model       string                 `json:"model"`
-	Temperature float64                `json:"temperature,omitempty"`
-	MaxTokens   int                    `json:"max_tokens,omitempty"`
-	Timeout     int                    `json:"timeout,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-}
+// Note: EvaluationRequest struct removed - now using dynamic payload generation based on YAML schema
 
 // BatchEvaluationRequest represents a batch evaluation request
 type BatchEvaluationRequest struct {
@@ -302,21 +316,8 @@ func (p *PythonAgentEvaluator) runTestSuite(testType string, numTests int) ([]Ca
 func (p *PythonAgentEvaluator) runSingleTestScenario(prompt, testType string, scenarioNum int) (CallMetadata, error) {
 	startTime := time.Now()
 
-	// Prepare evaluation request
-	request := EvaluationRequest{
-		Query:       prompt,
-		Provider:    "openai",      // Default provider, could be made configurable
-		Model:       "gpt-4-turbo", // Default model, could be made configurable
-		Temperature: 0.0,
-		Timeout:     30,
-		Metadata: map[string]interface{}{
-			"test_type": testType,
-			"scenario":  scenarioNum,
-		},
-	}
-
-	// Make HTTP request to evaluation endpoint
-	response, err := p.callEvaluationEndpoint(request)
+	// Make HTTP request to evaluation endpoint using dynamic schema
+	response, err := p.callEvaluationEndpoint(prompt, testType, scenarioNum)
 	if err != nil {
 		return CallMetadata{}, fmt.Errorf("evaluation endpoint call failed: %w", err)
 	}
@@ -341,20 +342,124 @@ func (p *PythonAgentEvaluator) runSingleTestScenario(prompt, testType string, sc
 		Success:         response.Success,
 		Error:           response.Error,
 		Vulnerabilities: vulnerabilities,
-		Tags:            []string{testType, "http_endpoint"},
+		Tags:            []string{testType, "http_endpoint", "dynamic_schema"},
 		CustomMetadata: map[string]interface{}{
-			"provider": response.ProviderInfo,
-			"metrics":  response.Metrics,
-			"timing":   response.Timing,
+			"provider":     response.ProviderInfo,
+			"metrics":      response.Metrics,
+			"timing":       response.Timing,
+			"schema_based": true,
 		},
 	}, nil
 }
 
-// callEvaluationEndpoint makes an HTTP request to the evaluation endpoint
-func (p *PythonAgentEvaluator) callEvaluationEndpoint(request EvaluationRequest) (*EvaluationResponse, error) {
+// generateRequestPayload creates a request payload based on the schema from the YAML config
+func (p *PythonAgentEvaluator) generateRequestPayload(prompt, testType string, scenarioNum int) (map[string]interface{}, error) {
+	schema := p.endpointConfig.Endpoints.SingleEvaluation.RequestSchema
+	payload := make(map[string]interface{})
+
+	// Set required fields first
+	for _, requiredField := range schema.Required {
+		if property, exists := schema.Properties[requiredField]; exists {
+			payload[requiredField] = p.getDefaultValueForProperty(property, requiredField, prompt)
+		}
+	}
+
+	// Set optional fields with defaults
+	for fieldName, property := range schema.Properties {
+		if !contains(schema.Required, fieldName) {
+			if property.Default != nil {
+				payload[fieldName] = property.Default
+			} else {
+				payload[fieldName] = p.getDefaultValueForProperty(property, fieldName, prompt)
+			}
+		}
+	}
+
+	// Add test-specific metadata
+	payload["test_metadata"] = map[string]interface{}{
+		"test_type": testType,
+		"scenario":  scenarioNum,
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+
+	return payload, nil
+}
+
+// getDefaultValueForProperty returns a default value for a schema property
+func (p *PythonAgentEvaluator) getDefaultValueForProperty(property SchemaProperty, fieldName, prompt string) interface{} {
+	switch fieldName {
+	case "query":
+		return prompt
+	case "provider":
+		return "openai" // Default provider
+	case "model":
+		return "gpt-4-turbo" // Default model
+	case "temperature":
+		return 0.0
+	case "max_tokens":
+		return 1000
+	case "report_type":
+		return "research_report"
+	case "report_source":
+		return "web"
+	case "tone":
+		return "objective"
+	case "reasoning_effort":
+		return "medium"
+	case "timeout":
+		return 300
+	case "parallel":
+		return false
+	case "headers":
+		return map[string]string{}
+	case "config_path":
+		return ""
+	default:
+		// Use schema default if available
+		if property.Default != nil {
+			return property.Default
+		}
+		// Use type-based defaults
+		switch property.Type {
+		case "string":
+			return ""
+		case "number":
+			return 0.0
+		case "integer":
+			return 0
+		case "boolean":
+			return false
+		case "array":
+			return []interface{}{}
+		case "object":
+			return map[string]interface{}{}
+		default:
+			return nil
+		}
+	}
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// callEvaluationEndpoint makes an HTTP request to the evaluation endpoint using dynamic schema
+func (p *PythonAgentEvaluator) callEvaluationEndpoint(prompt, testType string, scenarioNum int) (*EvaluationResponse, error) {
 	url := p.baseURL + p.endpointConfig.Endpoints.SingleEvaluation.Path
 
-	requestBody, err := json.Marshal(request)
+	// Generate payload based on schema
+	payload, err := p.generateRequestPayload(prompt, testType, scenarioNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate request payload: %w", err)
+	}
+
+	requestBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
