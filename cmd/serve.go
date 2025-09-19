@@ -24,17 +24,16 @@ type TestConfiguration struct {
 	IterationsPerTest    int `json:"iterationsPerTest"`
 }
 
-type AgentDetails struct {
-	AgentPurpose      string            `json:"agentPurpose"`
-	TestConfiguration TestConfiguration `json:"testConfiguration"`
-}
+// Note: AgentDetails struct removed - functionality merged into PythonAgentConfig
 
 type PythonAgentConfig struct {
-	PythonPath      string `json:"pythonPath"`
-	AgentScript     string `json:"agentScript"`
-	AgentRootFolder string `json:"agentRootFolder"`
-	EvaluationPort  int    `json:"evaluationPort"`
-	TrackingEnabled bool   `json:"trackingEnabled"`
+	PythonPath        string            `json:"pythonPath"`
+	AgentScript       string            `json:"agentScript"`
+	AgentRootFolder   string            `json:"agentRootFolder"`
+	EvaluationPort    int               `json:"evaluationPort"`
+	TrackingEnabled   bool              `json:"trackingEnabled"`
+	AgentPurpose      string            `json:"agentPurpose"`
+	TestConfiguration TestConfiguration `json:"testConfiguration"`
 }
 
 type AIClientConfig struct {
@@ -64,16 +63,12 @@ based on performance results.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load required environment variables
 		configPath := os.Getenv("AGENT_CONFIG")
-		agentDetails := os.Getenv("AGENT_DETAILS")
 
 		if configPath == "" {
 			configPath = "config/agentConfig.json"
 		}
-		if agentDetails == "" {
-			agentDetails = "config/agentDetails.json"
-		}
 
-		// Read Python agent configuration
+		// Read Python agent configuration (now includes agent details)
 		log.Println("Reading agent configuration from:", configPath)
 		configData, err := os.ReadFile(configPath)
 		if err != nil {
@@ -82,17 +77,6 @@ based on performance results.`,
 		var agentConfig PythonAgentConfig
 		if err := json.Unmarshal(configData, &agentConfig); err != nil {
 			log.Fatalln("Failed to unmarshal agent config:", err)
-		}
-
-		// Read agent details
-		log.Println("Reading agent details from:", agentDetails)
-		ad, err := os.ReadFile(agentDetails)
-		if err != nil {
-			log.Fatalln("Failed to read agent details file:", err)
-		}
-		var aiAgentDetails AgentDetails
-		if err := json.Unmarshal(ad, &aiAgentDetails); err != nil {
-			log.Fatalln("Failed to unmarshal agent details file:", err)
 		}
 
 		// Initialize AI client based on configuration and available keys
@@ -119,12 +103,12 @@ based on performance results.`,
 				AgentScript:     agentConfig.AgentScript,
 				TrackingEnabled: agentConfig.TrackingEnabled,
 			},
-			aiAgentDetails.AgentPurpose,
+			agentConfig.AgentPurpose,
 			cloneAttack.TestConfiguration{
-				DataLeakageTests:     aiAgentDetails.TestConfiguration.DataLeakageTests,
-				PromptInjectionTests: aiAgentDetails.TestConfiguration.PromptInjectionTests,
-				ConsistencyTests:     aiAgentDetails.TestConfiguration.ConsistencyTests,
-				IterationsPerTest:    aiAgentDetails.TestConfiguration.IterationsPerTest,
+				DataLeakageTests:     agentConfig.TestConfiguration.DataLeakageTests,
+				PromptInjectionTests: agentConfig.TestConfiguration.PromptInjectionTests,
+				ConsistencyTests:     agentConfig.TestConfiguration.ConsistencyTests,
+				IterationsPerTest:    agentConfig.TestConfiguration.IterationsPerTest,
 			},
 			evaluationConfigPath,
 		)

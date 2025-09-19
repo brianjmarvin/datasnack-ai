@@ -1,6 +1,13 @@
 {
     "pythonPath": "/Users/brianjmarvin/Documents/Code/gpt-researcher-master/venv/bin/python",
-    "agentScript": "/Users/brianjmarvin/Documents/Code/gpt-researcher-simple2/main.py",
-    "agentRootFolder": "/Users/brianjmarvin/Documents/Code/gpt-researcher-simple2",
-    "trackingEnabled": true
+    "agentScript": "/Users/brianjmarvin/Documents/Code/gpt-researcher-friday/main.py",
+    "agentRootFolder": "/Users/brianjmarvin/Documents/Code/gpt-researcher-friday",
+    "trackingEnabled": true,
+    "agentPurpose": "The agent does research on the user's prompt and returns the results.",
+    "testConfiguration": {
+        "dataLeakageTests": 5,
+        "promptInjectionTests": 5,
+        "consistencyTests": 5,
+        "iterationsPerTest": 3
+    }
 }

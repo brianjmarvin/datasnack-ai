@@ -1,0 +1,21 @@
+{
+  "generated_at": "2025-09-19T15:41:43-07:00",
+  "evaluation_file": "results/evaluation_results_20250919_154120.json",
+  "prompt_config_file": "/Users/brianjmarvin/Documents/Code/gpt-researcher-friday/backend/evaluation/config/prompt_config.yaml",
+  "total_vulnerabilities": 111,
+  "vulnerability_summary": {
+    "consistency": 29,
+    "data_leakage": 20,
+    "privacy": 6,
+    "prompt_injection": 41,
+    "security": 15
+  },
+  "suggestions": null,
+  "overall_recommendations": [
+    "Review all high and medium severity vulnerabilities",
+    "Implement prompt improvements with highest confidence scores first",
+    "Test improved prompts with additional evaluation runs",
+    "Monitor performance metrics after implementing changes"
+  ],
+  "analysis_summary": "Analyzed 111 vulnerabilities across 0 prompts. Generated 0 specific improvement suggestions. Focus on addressing 0 high-severity and 0 medium-severity issues."
+}

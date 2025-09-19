@@ -1,29 +1,30 @@
-# AI Agent Evaluator CLI
+# DataSnack AI Agent Evaluator CLI
 
-A comprehensive Go-based CLI tool for evaluating Python AI agents with advanced testing, vulnerability detection, and performance optimization capabilities.
+A comprehensive Go-based CLI tool for evaluating Python AI agents and n8n workflows with advanced testing, vulnerability detection, and intelligent prompt optimization capabilities.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [AI Agent Modification](#ai-agent-modification)
-- [Usage](#usage)
+- [Commands](#commands)
 - [AI Provider Selection](#ai-provider-selection)
 - [Examples](#examples)
+- [Output and Results](#output-and-results)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
 ## Overview
 
-The AI Agent Evaluator CLI is a powerful tool that:
+The DataSnack AI Agent Evaluator CLI is a powerful tool that:
 
-- **Evaluates Python AI agents** with comprehensive testing scenarios
-- **Detects vulnerabilities** including prompt injection, information leakage, and system prompt exposure
-- **Optimizes prompts** based on performance results
+- **Evaluates Python AI agents** with comprehensive HTTP endpoint testing
+- **Tests n8n workflows** with automated webhook integration
+- **Detects vulnerabilities** including prompt injection, data leakage, and security issues
+- **Generates intelligent prompt suggestions** based on evaluation results
 - **Supports multiple AI providers** (OpenAI, Anthropic, Groq, Ollama, AWS Bedrock)
-- **Provides detailed analytics** and recommendations
-- **Runs stress tests** to assess agent performance under load
+- **Provides detailed analytics** and actionable recommendations
+- **Uses dynamic schema-based payloads** for flexible agent integration
 
 ## Installation
 
@@ -32,12 +33,13 @@ The AI Agent Evaluator CLI is a powerful tool that:
 - **Go 1.19+** installed on your system
 - **Python 3.8+** for running AI agents
 - **API keys** for your preferred AI providers (optional)
+- **n8n instance** (for n8n workflow testing)
 
 ### Build from Source
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/brianjmarvin/datasnack-ai.git
+git clone https://github.com/brianjmarvin/DataSnackOS-RISK.git
 cd code-check-cli
 ```
 
@@ -96,22 +98,14 @@ This file defines which AI providers to use and in what order:
 
 ### 2. Agent Configuration (`config/agentConfig.json`)
 
-Configure the Python AI agent to evaluate:
+Configure the Python AI agent to evaluate (includes both agent settings and test configuration):
 
 ```json
 {
   "pythonPath": "/path/to/your/python/venv/bin/python",
   "agentScript": "/path/to/your/ai/agent/main.py",
-  "trackingEnabled": true
-}
-```
-
-### 3. Agent Details (`config/agentDetails.json`)
-
-Define the agent's purpose and test configuration:
-
-```json
-{
+  "agentRootFolder": "/path/to/your/ai/agent/root",
+  "trackingEnabled": true,
   "agentPurpose": "The agent does research on the user's prompt and returns the results.",
   "testConfiguration": {
     "dataLeakageTests": 5,
@@ -122,124 +116,81 @@ Define the agent's purpose and test configuration:
 }
 ```
 
+**Key Fields:**
+- **`agentRootFolder`**: Path to the AI agent's root directory (used for finding evaluation configs)
+- **`pythonPath`**: Python interpreter path for the agent
+- **`agentScript`**: Main script file for the agent
+- **`trackingEnabled`**: Enable/disable tracking features
+- **`agentPurpose`**: Description of what the agent does (used for AI-generated test prompts)
+- **`testConfiguration`**: Test parameters for evaluation
+
 **Test Configuration Options:**
 - **`dataLeakageTests`**: Number of AI-generated prompts to test for data leakage vulnerabilities
 - **`promptInjectionTests`**: Number of AI-generated prompts to test for prompt injection attacks
 - **`consistencyTests`**: Number of AI-generated prompts to test for response consistency
 - **`iterationsPerTest`**: Number of times each test prompt is executed for reliability
 
-## AI Agent Modification
+## Commands
 
-To make your Python AI agent compatible with the evaluator, you need to modify it using the comprehensive framework described in `cursor_eval_prompt.txt`.
+The CLI provides several commands for different evaluation scenarios:
 
-### Step 1: Understanding the Framework
+### 1. `evaluate` - Python AI Agent Evaluation
 
-The `cursor_eval_prompt.txt` file contains a detailed prompt for creating an AI call tracking and evaluation framework. Key components include:
+Evaluates Python AI agents using HTTP endpoints with dynamic schema-based payloads.
 
-- **Universal AI Call Detection**: Automatic detection of AI API calls
-- **Comprehensive Metadata Tracking**: UUID identifiers, timestamps, provider info
-- **Multi-modal Support**: Text, image, document, audio, video
-- **Provider Agnostic**: Works with OpenAI, Anthropic, Google, Azure, etc.
-- **Performance Monitoring**: Execution time, token usage, cost estimates
-
-### Step 2: Implementing the Framework
-
-1. **Read the prompt file:**
-```bash
-cat cursor_eval_prompt.txt
-```
-
-2. **Use the prompt with Cursor AI:**
-   - Open Cursor AI
-   - Paste the contents of `cursor_eval_prompt.txt`
-   - Apply it to your Python AI agent code
-   - The AI will help you implement the tracking framework
-
-3. **Key implementation elements:**
-```python
-@ai_call_tracker(
-    provider='openai',
-    input_type='text',
-    output_type='text',
-    log_level='detailed',
-    session_id='research_session_1',
-    user_id='researcher_123',
-    tags=['analysis', 'gpt-4'],
-    custom_metadata={'project': 'ai_research'}
-)
-async def analyze_document(document_content: str) -> str:
-    # Your AI call logic here
-    pass
-```
-
-### Step 3: Integration Points
-
-The framework should capture:
-- **Input/Output data** with type classification
-- **Execution metrics** (time, tokens, cost)
-- **Error handling** and success status
-- **Session context** and user information
-- **Custom metadata** for project-specific needs
-
-### Step 4: Testing Your Instrumented Agent
-
-After implementing the tracking framework, you can test your agent using the generic tester:
-
-```bash
-# Test your agent directly
-python examples/generic_agent_tester.py /path/to/your/agent.py "Test prompt here"
-
-# Example with a research agent
-python examples/generic_agent_tester.py /path/to/research_agent.py "What are the latest AI developments?"
-```
-
-The generic tester will:
-- **Automatically detect** your agent's main function
-- **Handle both sync and async** agent functions
-- **Provide detailed output** and error handling
-- **Work with any instrumented agent** regardless of implementation
-
-## Usage
-
-### Basic Evaluation
-
-1. **Set up your AI agent** using the framework from `cursor_eval_prompt.txt`
-
-2. **Configure the evaluator** by updating the config files
-
-3. **Set environment variables** for your preferred AI provider:
-```bash
-export OPENAI_API_KEY="sk-your-openai-key"
-# or
-export GROQ_API_KEY="gsk-your-groq-key"
-# or
-export ANTHROPIC_API_KEY="sk-ant-your-anthropic-key"
-```
-
-4. **Run the evaluation:**
 ```bash
 ./ai-evaluator evaluate
 ```
 
-### Advanced Usage
+**Features:**
+- **Dynamic Config Loading**: Automatically finds evaluation config in `{agentRootFolder}/backend/evaluation/config/evaluation_config.yaml`
+- **Schema-Based Payloads**: Generates request payloads based on YAML schema definitions
+- **Comprehensive Testing**: Data leakage, prompt injection, and consistency tests
+- **AI-Powered Test Generation**: Uses AI to create sophisticated test prompts
+- **Detailed Results**: Saves results to `results/evaluation_results_TIMESTAMP.json`
 
-#### Custom Configuration Paths
+### 2. `evaluaten8n` - N8N Workflow Evaluation
+
+Evaluates n8n workflows by adding webhook nodes and testing them programmatically.
+
 ```bash
-export AGENT_CONFIG="path/to/your/agentConfig.json"
-export TESTS_FILE="path/to/your/tests.json"
-export AGENT_DETAILS="path/to/your/agentDetails.json"
-export AI_CLIENT_CONFIG="path/to/your/aiClientConfig.json"
-./ai-evaluator evaluate
+./ai-evaluator evaluaten8n path/to/workflow.json
 ```
 
-#### Local Development with Ollama
-```bash
-# Start Ollama locally
-ollama serve
+**Features:**
+- **Automatic Webhook Integration**: Adds webhook trigger and response nodes
+- **Workflow Testing**: Tests workflows with standardized request/response format
+- **Vulnerability Detection**: Identifies security issues in workflow responses
+- **Results Analysis**: Comprehensive evaluation of workflow behavior
 
-# Run evaluation (no API keys needed)
-./ai-evaluator evaluate
+### 3. `convert` - N8N Workflow Conversion
+
+Converts n8n workflows to include webhook nodes for programmatic evaluation.
+
+```bash
+./ai-evaluator convert path/to/workflow.json
 ```
+
+**Features:**
+- **AI-Powered Conversion**: Uses AI to intelligently add webhook nodes
+- **Manual Fallback**: Falls back to manual conversion if AI fails
+- **Smart Node Detection**: Identifies final nodes and creates proper connections
+- **Validation**: Ensures converted workflows have proper webhook integration
+
+### 4. `suggestions` - Prompt Improvement Suggestions
+
+Analyzes evaluation results and generates intelligent suggestions for improving AI agent prompts.
+
+```bash
+./ai-evaluator suggestions
+```
+
+**Features:**
+- **Automatic Analysis**: Finds the most recent evaluation results
+- **AI-Powered Suggestions**: Uses AI to generate specific prompt improvements
+- **Vulnerability Mapping**: Maps vulnerabilities to specific prompts
+- **Confidence Scoring**: Provides confidence levels for each suggestion
+- **Detailed Reports**: Saves suggestions to `results/prompt_suggestions_TIMESTAMP.json`
 
 ## AI Provider Selection
 
@@ -270,15 +221,23 @@ Successfully initialized AI client: OpenAI GPT-4o-mini - Fast and cost-effective
 
 ## Examples
 
-### Example 1: GPT Researcher Agent
+### Example 1: Python AI Agent Evaluation
 
 ```bash
-# Configure for GPT Researcher
+# Configure for your AI agent
 cat > config/agentConfig.json << EOF
 {
-  "pythonPath": "/path/to/gpt-researcher/venv/bin/python",
-  "agentScript": "/path/to/gpt-researcher/main.py",
-  "trackingEnabled": true
+  "pythonPath": "/path/to/your/venv/bin/python",
+  "agentScript": "/path/to/your/agent/main.py",
+  "agentRootFolder": "/path/to/your/agent/root",
+  "trackingEnabled": true,
+  "agentPurpose": "The agent does research on the user's prompt and returns the results.",
+  "testConfiguration": {
+    "dataLeakageTests": 5,
+    "promptInjectionTests": 5,
+    "consistencyTests": 5,
+    "iterationsPerTest": 3
+  }
 }
 EOF
 
@@ -289,31 +248,31 @@ export OPENAI_API_KEY="sk-your-key"
 ./ai-evaluator evaluate
 ```
 
-### Example 2: Custom AI Agent
+### Example 2: N8N Workflow Testing
 
 ```bash
-# Configure for your custom agent
-cat > config/agentConfig.json << EOF
-{
-  "pythonPath": "/path/to/your/venv/bin/python",
-  "agentScript": "/path/to/your/agent.py",
-  "trackingEnabled": true
-}
-EOF
+# Convert workflow to include webhooks
+./ai-evaluator convert n8n/my-workflow.json
 
-# Set preferred provider
-export GROQ_API_KEY="gsk-your-key"
-
-# Run evaluation
-./ai-evaluator evaluate
+# Evaluate the converted workflow
+./ai-evaluator evaluaten8n n8n/my-workflow_eval.json
 ```
 
-### Example 3: Local Development
+### Example 3: Generate Prompt Suggestions
 
 ```bash
-# Start Ollama
+# First run an evaluation
+./ai-evaluator evaluate
+
+# Then generate suggestions based on results
+./ai-evaluator suggestions
+```
+
+### Example 4: Local Development with Ollama
+
+```bash
+# Start Ollama locally
 ollama serve
-ollama pull llama3.2
 
 # Configure for local model
 cat > config/aiClientConfig.json << EOF
@@ -333,92 +292,78 @@ cat > config/aiClientConfig.json << EOF
 }
 EOF
 
-# Run evaluation
+# Run evaluation (no API keys needed)
 ./ai-evaluator evaluate
-```
-
-### Example 4: Testing Individual Agents
-
-```bash
-# Test the included sample agent
-python3 examples/generic_agent_tester.py examples/sample_agent.py "Hello, test prompt!"
-
-# Test a research agent (like GPT Researcher)
-python3 examples/universal_agent_tester.py /path/to/research_agent.py "What is machine learning?"
-
-# Test a chatbot agent
-python3 examples/universal_agent_tester.py /path/to/chatbot.py "Hello, how are you?"
-
-# Test an analysis agent
-python3 examples/universal_agent_tester.py /path/to/analyzer.py "Analyze this data: [your data here]"
-```
-
-### Example 5: Universal Agent Tester
-
-The `examples/universal_agent_tester.py` is the most comprehensive testing tool that can handle:
-
-- **Function-based agents** (main, run, execute, etc.)
-- **Class-based agents** with methods
-- **Server-based agents** (like GPT Researcher)
-- **Agents with virtual environments**
-- **Automatic environment detection**
-
-```bash
-# Test any agent with automatic environment detection
-python3 examples/universal_agent_tester.py /path/to/any/agent.py "Test prompt"
-
-# Test with specific Python interpreter
-python3 examples/universal_agent_tester.py /path/to/agent.py "Test prompt" /path/to/venv/bin/python
-```
-
-### Example 6: Sample Agent Structure
-
-The `examples/sample_agent.py` file shows how to structure an AI agent that works with the evaluator:
-
-```python
-def main(user_prompt: str) -> str:
-    """Main agent function - the evaluator will find this automatically"""
-    # Your AI agent logic here
-    return "Agent response"
-
-# Alternative function names that also work:
-def run(prompt: str) -> str:
-    return main(prompt)
-
-async def async_agent(prompt: str) -> str:
-    """Async functions are also supported"""
-    return await some_async_ai_call(prompt)
 ```
 
 ## Output and Results
 
 The evaluator generates comprehensive results including:
 
-### AI-Generated Test Prompts
-- **Data Leakage Tests**: Automatically generated prompts designed to test for sensitive information exposure
-- **Prompt Injection Tests**: AI-created prompts that attempt to override system instructions
-- **Consistency Tests**: Generated prompts to test response consistency across different phrasings
+### Evaluation Results (`evaluation_results_TIMESTAMP.json`)
 
-### Performance Metrics
-- **Response times** (min, max, average)
-- **Success rates** and failure counts
-- **Total execution time**
-- **Test coverage** across different vulnerability types
+- **Test Summary**: Total calls, success/failure rates, average response time
+- **Vulnerabilities**: Detailed analysis of security issues found
+- **Performance Metrics**: Response times, execution statistics
+- **Recommendations**: High-level guidance for improvements
 
-### Vulnerability Analysis
-- **Data leakage** detection and scoring
-- **Prompt injection** resistance testing
-- **Consistency** analysis across test variations
-- **Security scores** and detailed recommendations
+### Prompt Suggestions (`prompt_suggestions_TIMESTAMP.json`)
 
-### Optimization Recommendations
-- **Prompt improvements** based on AI-generated test results
-- **Performance optimizations** for better response times
-- **Security enhancements** to address detected vulnerabilities
-- **Best practices** suggestions for production deployment
+- **Individual Suggestions**: Specific improvements for each prompt
+- **Vulnerability Mapping**: Which vulnerabilities each suggestion addresses
+- **Confidence Scores**: AI confidence in each suggestion
+- **Impact Assessment**: Expected improvement from each change
+- **Overall Recommendations**: Strategic guidance for implementation
 
-### Results File
-Results are saved to `results/evaluation_results_TIMESTAMP.json` with detailed analysis, AI-generated test prompts, and comprehensive recommendations.
+### N8N Workflow Results
+
+- **Webhook Integration**: Status of webhook node addition
+- **Response Analysis**: Evaluation of workflow responses
+- **Security Assessment**: Identification of potential vulnerabilities
+- **Performance Metrics**: Response times and reliability
+
+## AI Agent Integration
+
+### Required Agent Structure
+
+Your Python AI agent should implement HTTP endpoints as defined in the evaluation config:
+
+**Example endpoint structure:**
+```python
+@app.post("/api/evaluation/evaluate")
+async def evaluate_single(request: EvaluationRequest):
+    # Process the request
+    response = await your_ai_agent.process(request.query)
+    
+    # Return standardized response
+    return {
+        "success": True,
+        "query": request.query,
+        "response": response,
+        "metrics": {
+            "response_time": 1.5,
+            "total_time": 2.0,
+            "response_length": len(response),
+            "word_count": len(response.split()),
+            "has_content": bool(response),
+            "source_count": 0,
+            "has_citations": False
+        },
+        "agent_info": {
+            "agent_type": "research",
+            "report_type": "research_report",
+            "report_source": "web"
+        },
+        "error": None
+    }
+```
+
+### Configuration Files
+
+The agent should provide two configuration files:
+
+1. **`backend/evaluation/config/evaluation_config.yaml`**: API endpoint schemas
+2. **`backend/evaluation/config/prompt_config.yaml`**: Prompt catalog and metadata
 
 ## Troubleshooting
 
@@ -431,15 +376,27 @@ Results are saved to `results/evaluation_results_TIMESTAMP.json` with detailed a
 
 2. **Python agent fails to run:**
    - Verify Python path in `agentConfig.json`
-   - Check agent script path
+   - Check agent script path and agentRootFolder
    - Ensure all dependencies are installed
+   - Verify the agent is running on the expected port
+   - Check that agentPurpose and testConfiguration are properly set
 
-3. **Ollama not accessible:**
+3. **Evaluation config not found:**
+   - Check that `agentRootFolder` points to the correct directory
+   - Verify `backend/evaluation/config/evaluation_config.yaml` exists
+   - The CLI will fall back to local config if not found
+
+4. **N8N workflow issues:**
+   - Ensure n8n server is running on localhost:5678
+   - Import and activate the workflow in n8n interface
+   - Check webhook paths are correctly configured
+
+5. **Ollama not accessible:**
    - Ensure Ollama is running: `ollama serve`
    - Check endpoint in configuration
    - Verify model is pulled: `ollama list`
 
-4. **AWS Bedrock fails:**
+6. **AWS Bedrock fails:**
    - Check AWS credentials and region
    - Verify Bedrock access permissions
    - Ensure model is available in your region
@@ -451,9 +408,10 @@ Enable detailed logging by setting `"logProviderSelection": true` in `aiClientCo
 ### Getting Help
 
 1. **Check logs** for detailed error messages
-2. **Verify configuration** files are valid JSON
+2. **Verify configuration** files are valid JSON/YAML
 3. **Test AI providers** individually
 4. **Check environment variables** are set correctly
+5. **Verify agent endpoints** are accessible
 
 ## Contributing
 
@@ -469,6 +427,4 @@ This project is licensed under the terms specified in the LICENSE file.
 
 ---
 
-For more detailed information, see the individual configuration files and the `cursor_eval_prompt.txt` for AI agent modification guidelines.
-# datasnack-ai
-# datasnack-ai
+For more detailed information, see the individual configuration files and the `config/datasnack-instrumentation.md` for AI agent integration guidelines.
