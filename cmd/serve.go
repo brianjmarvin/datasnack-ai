@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ type AgentDetails struct {
 type PythonAgentConfig struct {
 	PythonPath      string `json:"pythonPath"`
 	AgentScript     string `json:"agentScript"`
+	AgentRootFolder string `json:"agentRootFolder"`
 	EvaluationPort  int    `json:"evaluationPort"`
 	TrackingEnabled bool   `json:"trackingEnabled"`
 }
@@ -99,6 +101,16 @@ based on performance results.`,
 			log.Fatalln("Failed to initialize AI client:", err)
 		}
 
+		// Construct the evaluation config path from the agent root folder
+		evaluationConfigPath := filepath.Join(agentConfig.AgentRootFolder, "backend", "evaluation", "config", "evaluation_config.yaml")
+		log.Printf("Looking for evaluation config at: %s", evaluationConfigPath)
+
+		// Check if the evaluation config file exists
+		if _, err := os.Stat(evaluationConfigPath); os.IsNotExist(err) {
+			log.Printf("Warning: Evaluation config not found at %s, falling back to local config", evaluationConfigPath)
+			evaluationConfigPath = "config/evaluation_config.yaml"
+		}
+
 		// Initialize Python agent evaluator using HTTP endpoints
 		evaluator, err := cloneAttack.NewPythonAgentEvaluator(
 			ai,
@@ -114,7 +126,7 @@ based on performance results.`,
 				ConsistencyTests:     aiAgentDetails.TestConfiguration.ConsistencyTests,
 				IterationsPerTest:    aiAgentDetails.TestConfiguration.IterationsPerTest,
 			},
-			"config/evaluation_config.yaml",
+			evaluationConfigPath,
 		)
 		if err != nil {
 			log.Fatalln("Failed to initialize Python agent evaluator:", err)

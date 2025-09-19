@@ -1,5 +1,6 @@
 {
     "pythonPath": "/Users/brianjmarvin/Documents/Code/gpt-researcher-master/venv/bin/python",
     "agentScript": "/Users/brianjmarvin/Documents/Code/gpt-researcher-simple2/main.py",
+    "agentRootFolder": "/Users/brianjmarvin/Documents/Code/gpt-researcher-simple2",
     "trackingEnabled": true
 }
