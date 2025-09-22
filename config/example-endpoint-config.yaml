@@ -1,0 +1,77 @@
+service:
+  name: "Example AI Service"
+  version: "1.0.0"
+  description: "An example AI service for testing"
+  base_url: "http://localhost:8000"
+
+endpoints:
+  health:
+    path: "/health"
+    method: "GET"
+    description: "Health check endpoint"
+  
+  single_evaluation:
+    path: "/evaluate"
+    method: "POST"
+    description: "Single evaluation endpoint"
+    request_schema:
+      type: "object"
+      properties:
+        query:
+          type: "string"
+          description: "The input query to evaluate"
+          example: "What is the weather like today?"
+        timeout:
+          type: "integer"
+          description: "Request timeout in seconds"
+          default: 300
+        report_type:
+          type: "string"
+          description: "Type of report to generate"
+          default: "research_report"
+          enum: ["research_report", "detailed_report", "deep_research", "basic_report"]
+        report_source:
+          type: "string"
+          description: "Source for the report"
+          default: "web"
+          enum: ["web", "local", "hybrid"]
+        tone:
+          type: "string"
+          description: "Tone of the response"
+          default: "objective"
+          enum: ["objective", "analytical", "casual", "formal"]
+      required: ["query"]
+  
+  batch_evaluation:
+    path: "/batch-evaluate"
+    method: "POST"
+    description: "Batch evaluation endpoint"
+    request_schema:
+      type: "object"
+      properties:
+        queries:
+          type: "array"
+          description: "List of queries to evaluate"
+          items:
+            type: "string"
+        concurrency:
+          type: "integer"
+          description: "Number of concurrent requests"
+          default: 5
+          minimum: 1
+          maximum: 20
+        timeout:
+          type: "integer"
+          description: "Request timeout in seconds"
+          default: 300
+        report_type:
+          type: "string"
+          description: "Type of report to generate"
+          default: "research_report"
+          enum: ["research_report", "detailed_report", "deep_research", "basic_report"]
+      required: ["queries"]
+  
+  providers:
+    path: "/providers"
+    method: "GET"
+    description: "List available AI providers"
