@@ -14,36 +14,40 @@ import (
 
 // endpointEvalCmd represents the endpointEval command
 var endpointEvalCmd = &cobra.Command{
-	Use:   "endpointEval [yaml-config-file]",
-	Short: "Evaluate any HTTP endpoint with YAML-defined schema",
+	Use:   "endpointEval [json-config-file]",
+	Short: "Evaluate any HTTP endpoint with JSON-defined schema",
 	Long: `Evaluate any HTTP endpoint for security vulnerabilities using AI-powered analysis.
-This command works like the 'evaluate' command but takes a YAML file that defines
+This command works like the 'evaluate' command but takes a JSON file that defines
 the full endpoint URL and the schema for the payload.
 
-The YAML file should contain:
+The JSON file should contain:
 - service: base URL and service information
 - endpoints: endpoint definitions with paths, methods, and request schemas
 - The same test configuration as other evaluation commands
 
 Example:
-  ai-evaluator endpointEval config/my-endpoint-config.yaml`,
+  ai-evaluator endpointEval config/my-endpoint-config.json`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		yamlConfigFile := args[0]
+		jsonConfigFile := args[0]
 
 		// Check if file exists
-		if _, err := os.Stat(yamlConfigFile); os.IsNotExist(err) {
-			log.Fatalf("YAML config file does not exist: %s", yamlConfigFile)
+		if _, err := os.Stat(jsonConfigFile); os.IsNotExist(err) {
+			log.Fatalf("JSON config file does not exist: %s", jsonConfigFile)
 		}
 
-		// Read agent details configuration (same as evaluaten8n)
-		log.Println("Reading agent details from: config/agentDetails.json")
-		agentDetailsData, err := os.ReadFile("config/agentDetails.json")
+		// Read agent configuration
+		log.Println("Reading agent configuration from: config/agentConfig.json")
+		agentConfigData, err := os.ReadFile("config/agentConfig.json")
 		if err != nil {
-			log.Fatalf("Failed to read agent details: %v", err)
+			log.Fatalf("Failed to read agent config: %v", err)
 		}
 
-		var agentDetails struct {
+		var agentConfig struct {
+			BaseURL           string `json:"baseURL"`
+			Endpoint          string `json:"endpoint"`
+			AgentRootFolder   string `json:"agentRootFolder"`
+			TrackingEnabled   bool   `json:"trackingEnabled"`
 			AgentPurpose      string `json:"agentPurpose"`
 			TestConfiguration struct {
 				DataLeakageTests     int `json:"dataLeakageTests"`
@@ -53,8 +57,8 @@ Example:
 			} `json:"testConfiguration"`
 		}
 
-		if err := json.Unmarshal(agentDetailsData, &agentDetails); err != nil {
-			log.Fatalf("Failed to parse agent details: %v", err)
+		if err := json.Unmarshal(agentConfigData, &agentConfig); err != nil {
+			log.Fatalf("Failed to parse agent config: %v", err)
 		}
 
 		// Initialize AI client (same logic as serve.go)
@@ -66,13 +70,13 @@ Example:
 		// Initialize endpoint evaluator
 		evaluator, err := cloneAttack.NewEndpointEvaluator(
 			ai,
-			yamlConfigFile,
-			agentDetails.AgentPurpose,
+			jsonConfigFile,
+			agentConfig.AgentPurpose,
 			cloneAttack.TestConfiguration{
-				DataLeakageTests:     agentDetails.TestConfiguration.DataLeakageTests,
-				PromptInjectionTests: agentDetails.TestConfiguration.PromptInjectionTests,
-				ConsistencyTests:     agentDetails.TestConfiguration.ConsistencyTests,
-				IterationsPerTest:    agentDetails.TestConfiguration.IterationsPerTest,
+				DataLeakageTests:     agentConfig.TestConfiguration.DataLeakageTests,
+				PromptInjectionTests: agentConfig.TestConfiguration.PromptInjectionTests,
+				ConsistencyTests:     agentConfig.TestConfiguration.ConsistencyTests,
+				IterationsPerTest:    agentConfig.TestConfiguration.IterationsPerTest,
 			},
 		)
 		if err != nil {

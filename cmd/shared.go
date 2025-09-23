@@ -11,10 +11,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"time"
-
-	"github.com/spf13/cobra"
 )
 
 type TestConfiguration struct {
@@ -22,18 +18,6 @@ type TestConfiguration struct {
 	PromptInjectionTests int `json:"promptInjectionTests"`
 	ConsistencyTests     int `json:"consistencyTests"`
 	IterationsPerTest    int `json:"iterationsPerTest"`
-}
-
-// Note: AgentDetails struct removed - functionality merged into PythonAgentConfig
-
-type PythonAgentConfig struct {
-	PythonPath        string            `json:"pythonPath"`
-	AgentScript       string            `json:"agentScript"`
-	AgentRootFolder   string            `json:"agentRootFolder"`
-	EvaluationPort    int               `json:"evaluationPort"`
-	TrackingEnabled   bool              `json:"trackingEnabled"`
-	AgentPurpose      string            `json:"agentPurpose"`
-	TestConfiguration TestConfiguration `json:"testConfiguration"`
 }
 
 type AIClientConfig struct {
@@ -49,95 +33,6 @@ type AIClientOption struct {
 	EnvKey      string `json:"envKey"`
 	Endpoint    string `json:"endpoint,omitempty"`
 	Description string `json:"description"`
-}
-
-// go run . evaluate
-var evaluateCmd = &cobra.Command{
-	Use:   "evaluate",
-	Short: "Evaluate Python AI agents with comprehensive testing",
-	Long: `AI Agent Evaluator is a comprehensive testing tool that performs 
-end-to-end stress testing and dynamic prompt optimization on Python AI agents.
-
-It starts a Python evaluation server, runs stress tests, and optimizes prompts
-based on performance results.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Load required environment variables
-		configPath := os.Getenv("AGENT_CONFIG")
-
-		if configPath == "" {
-			configPath = "config/agentConfig.json"
-		}
-
-		// Read Python agent configuration (now includes agent details)
-		log.Println("Reading agent configuration from:", configPath)
-		configData, err := os.ReadFile(configPath)
-		if err != nil {
-			log.Fatalln("Failed to read agent config file:", err)
-		}
-		var agentConfig PythonAgentConfig
-		if err := json.Unmarshal(configData, &agentConfig); err != nil {
-			log.Fatalln("Failed to unmarshal agent config:", err)
-		}
-
-		// Initialize AI client based on configuration and available keys
-		ai, err := initializeAIClient()
-		if err != nil {
-			log.Fatalln("Failed to initialize AI client:", err)
-		}
-
-		// Construct the evaluation config path from the agent root folder
-		evaluationConfigPath := filepath.Join(agentConfig.AgentRootFolder, "backend", "evaluation", "config", "evaluation_config.yaml")
-		log.Printf("Looking for evaluation config at: %s", evaluationConfigPath)
-
-		// Check if the evaluation config file exists
-		if _, err := os.Stat(evaluationConfigPath); os.IsNotExist(err) {
-			log.Printf("Warning: Evaluation config not found at %s, falling back to local config", evaluationConfigPath)
-			evaluationConfigPath = "config/evaluation_config.yaml"
-		}
-
-		// Initialize Python agent evaluator using HTTP endpoints
-		evaluator, err := cloneAttack.NewPythonAgentEvaluator(
-			ai,
-			cloneAttack.PythonAgentConfig{
-				PythonPath:      agentConfig.PythonPath,
-				AgentScript:     agentConfig.AgentScript,
-				TrackingEnabled: agentConfig.TrackingEnabled,
-			},
-			agentConfig.AgentPurpose,
-			cloneAttack.TestConfiguration{
-				DataLeakageTests:     agentConfig.TestConfiguration.DataLeakageTests,
-				PromptInjectionTests: agentConfig.TestConfiguration.PromptInjectionTests,
-				ConsistencyTests:     agentConfig.TestConfiguration.ConsistencyTests,
-				IterationsPerTest:    agentConfig.TestConfiguration.IterationsPerTest,
-			},
-			evaluationConfigPath,
-		)
-		if err != nil {
-			log.Fatalln("Failed to initialize Python agent evaluator:", err)
-		}
-
-		// Run comprehensive evaluation
-		results, err := evaluator.RunComprehensiveVulnerabilityTest()
-		if err != nil {
-			log.Println("Comprehensive evaluation failed:", err)
-			return
-		}
-
-		// Save results to JSON file
-		resultsJSON, err := json.MarshalIndent(results, "", "  ")
-		if err != nil {
-			log.Println("Failed to marshal results:", err)
-			return
-		}
-
-		timestamp := time.Now().Format("20060102_150405")
-		filename := fmt.Sprintf("results/evaluation_results_%s.json", timestamp)
-		if err := os.WriteFile(filename, resultsJSON, 0644); err != nil {
-			log.Println("Failed to write results:", err)
-		} else {
-			log.Printf("Results saved to: %s", filename)
-		}
-	},
 }
 
 // initializeAIClient creates an AI client based on configuration and available API keys
@@ -275,15 +170,3 @@ func testAIClient(client cloneAttack.AIClient) error {
 	return err
 }
 
-func init() {
-	rootCmd.AddCommand(evaluateCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// evaluateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}

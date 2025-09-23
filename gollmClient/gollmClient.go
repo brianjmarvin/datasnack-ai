@@ -244,6 +244,12 @@ func (g *GollmClient) SetTopP(topP float64) {
 	g.llm.SetOption("top_p", topP)
 }
 
+// GenerateImage implements the AIClient interface for image generation
+// Note: Most LLM providers don't support image generation, so this returns an error
+func (g *GollmClient) GenerateImage(prompt string) ([]byte, error) {
+	return nil, fmt.Errorf("image generation is not supported by the %s provider", g.GetProvider())
+}
+
 // Close cleans up resources (if needed)
 func (g *GollmClient) Close() error {
 	// gollm doesn't require explicit cleanup, but this method is here for interface consistency

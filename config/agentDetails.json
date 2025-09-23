@@ -1,9 +1,0 @@
-{
-    "agentPurpose": "The agent does research on the user's prompt and returns the results.",
-    "testConfiguration": {
-        "dataLeakageTests": 5,
-        "promptInjectionTests": 5,
-        "consistencyTests": 5,
-        "iterationsPerTest": 3
-    }
-}

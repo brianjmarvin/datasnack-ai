@@ -18,6 +18,7 @@ const MAX_ATTEMPTS_TO_BREAK int = 3
 type AIClient interface {
 	GenerateAI(request string, system string, pastMsgs []map[string]string) (string, error)
 	GenerateAISchema(request string, system string, pastMsgs []map[string]string, schema string) (string, error)
+	GenerateImage(prompt string) ([]byte, error)
 }
 
 type PythonAgentConfig struct {
@@ -971,4 +972,89 @@ Return only the prompts, one per line, without numbering or explanations.`, a.te
 	}
 
 	return cleanPrompts, nil
+}
+
+// EndpointConfig represents the configuration loaded from JSON
+type EndpointConfig struct {
+	Service   ServiceConfig           `json:"service"`
+	Endpoints map[string]EndpointInfo `json:"endpoints"`
+}
+
+// ServiceConfig represents service information
+type ServiceConfig struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
+	BaseURL     string `json:"base_url"`
+}
+
+// EndpointInfo represents endpoint configuration
+type EndpointInfo struct {
+	Path           string                 `json:"path"`
+	Method         string                 `json:"method"`
+	Description    string                 `json:"description"`
+	RequestSchema  map[string]interface{} `json:"request_schema,omitempty"`
+	ResponseSchema map[string]interface{} `json:"response_schema,omitempty"`
+}
+
+// EvaluationResponse represents the response from an evaluation
+type EvaluationResponse struct {
+	Response     string                 `json:"response"`
+	Error        string                 `json:"error,omitempty"`
+	Success      bool                   `json:"success"`
+	ProviderInfo map[string]interface{} `json:"providerInfo,omitempty"`
+	Metrics      map[string]interface{} `json:"metrics,omitempty"`
+	Timing       map[string]interface{} `json:"timing,omitempty"`
+}
+
+// SchemaProperty represents a property in a JSON schema
+type SchemaProperty struct {
+	Type        string                 `json:"type"`
+	Description string                 `json:"description,omitempty"`
+	Example     interface{}            `json:"example,omitempty"`
+	Default     interface{}            `json:"default,omitempty"`
+	Properties  map[string]interface{} `json:"properties,omitempty"`
+	Items       map[string]interface{} `json:"items,omitempty"`
+	Required    []string               `json:"required,omitempty"`
+	Enum        []interface{}          `json:"enum,omitempty"`
+	Minimum     *float64               `json:"minimum,omitempty"`
+	Maximum     *float64               `json:"maximum,omitempty"`
+}
+
+// loadEndpointConfig loads endpoint configuration from JSON file
+func loadEndpointConfig(jsonFile string) (*EndpointConfig, error) {
+	data, err := os.ReadFile(jsonFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read JSON file: %w", err)
+	}
+
+	var config EndpointConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	return &config, nil
+}
+
+// generateCallID generates a unique call ID
+func generateCallID() string {
+	return fmt.Sprintf("call_%d", time.Now().UnixNano())
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// truncateString truncates a string to the specified length
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

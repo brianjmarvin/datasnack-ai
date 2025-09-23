@@ -2,44 +2,82 @@ package cloneAttack
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
+
+	"datasnack/documentGenerator"
 )
 
-// EndpointEvaluator handles evaluation of any HTTP endpoint with YAML-defined schema
+// DocumentType represents the type of document required
+type DocumentType struct {
+	Type        string `yaml:"x-document-type"`
+	Description string `yaml:"x-document-description"`
+}
+
+// DocumentRequest represents a request for a test document
+type DocumentRequest struct {
+	DocumentType string                 `json:"document_type"`
+	Content      string                 `json:"content"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	Format       map[string]interface{} `json:"format,omitempty"`
+}
+
+// DocumentResponse represents the response from the document service
+type DocumentResponse struct {
+	Success  bool   `json:"success"`
+	Content  []byte `json:"content"`
+	FileName string `json:"filename"`
+	MimeType string `json:"mime_type"`
+	FileSize int64  `json:"file_size"`
+	Error    string `json:"error,omitempty"`
+}
+
+// EndpointEvaluator handles evaluation of any HTTP endpoint with JSON-defined schema
 type EndpointEvaluator struct {
 	ai                AIClient
-	yamlConfigFile    string
+	jsonConfigFile    string
 	agentPurpose      string
 	testConfiguration TestConfiguration
 	callHistory       []CallMetadata
 	stressTestResults *StressTestResults
 	endpointConfig    *EndpointConfig
 	httpClient        *http.Client
+	documentGenerator *documentGenerator.DocumentGenerator
 }
 
 // NewEndpointEvaluator creates a new endpoint evaluator
-func NewEndpointEvaluator(ai AIClient, yamlConfigFile, agentPurpose string, testConfig TestConfiguration) (*EndpointEvaluator, error) {
-	// Load endpoint configuration from YAML file
-	endpointConfig, err := loadEndpointConfig(yamlConfigFile)
+func NewEndpointEvaluator(ai AIClient, jsonConfigFile, agentPurpose string, testConfig TestConfiguration) (*EndpointEvaluator, error) {
+	// Load endpoint configuration from JSON file
+	endpointConfig, err := loadEndpointConfig(jsonConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load endpoint config: %w", err)
 	}
 
 	// Wait for the endpoint to be ready (health check)
-	if err := waitForEndpointReady(endpointConfig.Service.BaseURL, endpointConfig.Endpoints.Health.Path); err != nil {
-		log.Printf("Warning: Endpoint health check failed: %v", err)
-		// Continue anyway, as the endpoint might not have a health endpoint
+	healthEndpoint, hasHealth := endpointConfig.Endpoints["health"]
+	if hasHealth {
+		if err := waitForEndpointReady(endpointConfig.Service.BaseURL, healthEndpoint.Path); err != nil {
+			log.Printf("Warning: Endpoint health check failed: %v", err)
+			// Continue anyway, as the endpoint might not have a health endpoint
+		}
+	}
+
+	// Initialize document generator with the existing AI client
+	var docGen *documentGenerator.DocumentGenerator
+	if ai != nil {
+		docGen = documentGenerator.NewDocumentGenerator(ai)
 	}
 
 	return &EndpointEvaluator{
 		ai:                ai,
-		yamlConfigFile:    yamlConfigFile,
+		jsonConfigFile:    jsonConfigFile,
 		agentPurpose:      agentPurpose,
 		testConfiguration: testConfig,
 		callHistory:       []CallMetadata{},
@@ -53,6 +91,7 @@ func NewEndpointEvaluator(ai AIClient, yamlConfigFile, agentPurpose string, test
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		documentGenerator: docGen,
 	}, nil
 }
 
@@ -79,6 +118,143 @@ func waitForEndpointReady(baseURL, healthPath string) error {
 	}
 
 	return fmt.Errorf("endpoint not ready after %d attempts", maxRetries)
+}
+
+// hasDocumentField checks if the request schema requires a document
+func (e *EndpointEvaluator) hasDocumentField() (bool, *DocumentType) {
+	mainEndpoint, exists := e.endpointConfig.Endpoints["main"]
+	if !exists {
+		return false, nil
+	}
+	schema := mainEndpoint.RequestSchema
+	if schema == nil {
+		return false, nil
+	}
+
+	// Check if schema has properties
+	properties, hasProperties := schema["properties"]
+	if !hasProperties {
+		return false, nil
+	}
+
+	propertiesMap, ok := properties.(map[string]interface{})
+	if !ok {
+		return false, nil
+	}
+
+	for _, property := range propertiesMap {
+		propertyMap, ok := property.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		// Check if this field is a document field by looking for document type annotations
+		if docType, exists := propertyMap["x-document-type"]; exists {
+			if docDesc, descExists := propertyMap["x-document-description"]; descExists {
+				return true, &DocumentType{
+					Type:        fmt.Sprintf("%v", docType),
+					Description: fmt.Sprintf("%v", docDesc),
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// getTestDocument generates a test document using the local document generator
+func (e *EndpointEvaluator) getTestDocument(docType *DocumentType, testType, scenario string) (*DocumentResponse, error) {
+	// Check if document generator is available
+	if e.documentGenerator == nil {
+		return nil, fmt.Errorf("document generator not available - AI client not initialized")
+	}
+
+	// Create request based on document type and example format
+	request := e.createDocumentRequest(docType, testType, scenario)
+
+	// Convert to documentGenerator format
+	docRequest := &documentGenerator.DocumentRequest{
+		DocumentType: documentGenerator.DocumentType(docType.Type),
+		Content:      request.Content,
+		Metadata: documentGenerator.Metadata{
+			Title:     request.Metadata["title"].(string),
+			Author:    request.Metadata["author"].(string),
+			Subject:   request.Metadata["subject"].(string),
+			CreatedAt: time.Now(),
+		},
+		Format: documentGenerator.Format{
+			Delimiter: request.Format["delimiter"].(string),
+			Headers:   request.Format["headers"].(bool),
+			FontSize:  int(request.Format["font_size"].(float64)),
+		},
+	}
+
+	// Generate document using local generator
+	ctx := context.Background()
+	docResponse, err := e.documentGenerator.GenerateDocument(ctx, docRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate document: %w", err)
+	}
+
+	// Convert to our DocumentResponse format
+	return &DocumentResponse{
+		Success:  true,
+		Content:  docResponse.Content,
+		FileName: docResponse.FileName,
+		MimeType: docResponse.MimeType,
+		FileSize: docResponse.FileSize,
+	}, nil
+}
+
+// createDocumentRequest creates a document request based on the document type and example format
+func (e *EndpointEvaluator) createDocumentRequest(docType *DocumentType, testType, scenario string) DocumentRequest {
+	// Base request structure
+	request := DocumentRequest{
+		DocumentType: docType.Type,
+		Content:      docType.Description,
+		Metadata: map[string]interface{}{
+			"title":   fmt.Sprintf("Test Document for %s", testType),
+			"author":  "AI Evaluator",
+			"subject": fmt.Sprintf("Security Test - %s", testType),
+		},
+	}
+
+	// Add format-specific configurations based on document type
+	switch docType.Type {
+	case "text":
+		request.Content = fmt.Sprintf("Generate a comprehensive test document for %s testing. This document should contain content that will help evaluate the endpoint's handling of text-based inputs. Test scenario: %s", testType, scenario)
+		request.Format = map[string]interface{}{
+			"encoding": "utf-8",
+		}
+	case "csv":
+		request.Content = fmt.Sprintf("Generate a CSV file with sample data for %s testing. Include relevant columns and 20 rows of test data. Test scenario: %s", testType, scenario)
+		request.Format = map[string]interface{}{
+			"delimiter": ",",
+			"headers":   true,
+		}
+	case "pdf":
+		request.Content = fmt.Sprintf("Create a PDF document for %s testing. Include formatted text, headers, and structured content. Test scenario: %s", testType, scenario)
+		request.Format = map[string]interface{}{
+			"page_size": "A4",
+			"font_size": 12,
+			"margins": map[string]int{
+				"top":    20,
+				"bottom": 20,
+				"left":   20,
+				"right":  20,
+			},
+		}
+	case "image":
+		request.Content = fmt.Sprintf("Generate an image for %s testing. Create a professional visualization or infographic. Test scenario: %s", testType, scenario)
+		request.Format = map[string]interface{}{
+			"width":  1024,
+			"height": 768,
+			"format": "png",
+		}
+	default:
+		request.Content = fmt.Sprintf("Generate a %s document for %s testing. Test scenario: %s", docType.Type, testType, scenario)
+	}
+
+	return request
 }
 
 // RunComprehensiveVulnerabilityTest runs comprehensive tests on the endpoint
@@ -194,44 +370,39 @@ func (e *EndpointEvaluator) runSingleTestScenario(prompt, testType string, scena
 		Success:         response.Success,
 		Error:           response.Error,
 		Vulnerabilities: vulnerabilities,
-		Tags:            []string{testType, "http_endpoint", "yaml_schema"},
+		Tags:            []string{testType, "http_endpoint", "json_schema"},
 		CustomMetadata: map[string]interface{}{
 			"provider":    response.ProviderInfo,
 			"metrics":     response.Metrics,
 			"timing":      response.Timing,
-			"yaml_config": e.yamlConfigFile,
+			"json_config": e.jsonConfigFile,
 		},
 	}, nil
 }
 
 // callEvaluationEndpoint makes an HTTP request to the evaluation endpoint using dynamic schema
 func (e *EndpointEvaluator) callEvaluationEndpoint(prompt, testType string, scenarioNum int) (*EvaluationResponse, error) {
-	// Generate request payload based on YAML schema
-	payload, err := e.generateRequestPayload(prompt, testType, scenarioNum)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate request payload: %w", err)
-	}
-
-	// Convert payload to JSON
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
-	}
+	// Check if the endpoint requires a document
+	hasDocument, docType := e.hasDocumentField()
 
 	// Construct the full URL
-	endpoint := e.endpointConfig.Endpoints.SingleEvaluation
-	url := e.endpointConfig.Service.BaseURL + endpoint.Path
+	mainEndpoint, exists := e.endpointConfig.Endpoints["main"]
+	if !exists {
+		return nil, fmt.Errorf("main endpoint not found in configuration")
+	}
+	url := e.endpointConfig.Service.BaseURL + mainEndpoint.Path
 
-	// Create HTTP request
-	req, err := http.NewRequest(endpoint.Method, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	var resp *http.Response
+	var err error
+
+	if hasDocument {
+		// Handle document upload with multipart form data
+		resp, err = e.callEndpointWithDocument(url, mainEndpoint.Method, prompt, testType, scenarioNum, docType)
+	} else {
+		// Handle regular JSON request
+		resp, err = e.callEndpointWithJSON(url, mainEndpoint.Method, prompt, testType, scenarioNum)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-
-	// Make the request
-	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return &EvaluationResponse{
 			Success: false,
@@ -266,26 +437,149 @@ func (e *EndpointEvaluator) callEvaluationEndpoint(prompt, testType string, scen
 	return &response, nil
 }
 
-// generateRequestPayload creates a request payload based on the schema from the YAML config
+// callEndpointWithJSON makes a JSON request to the endpoint
+func (e *EndpointEvaluator) callEndpointWithJSON(url, method, prompt, testType string, scenarioNum int) (*http.Response, error) {
+	// Generate request payload based on JSON schema
+	payload, err := e.generateRequestPayload(prompt, testType, scenarioNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate request payload: %w", err)
+	}
+
+	// Convert payload to JSON
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Make the request
+	return e.httpClient.Do(req)
+}
+
+// callEndpointWithDocument makes a multipart form request with document upload
+func (e *EndpointEvaluator) callEndpointWithDocument(url, method, prompt, testType string, scenarioNum int, docType *DocumentType) (*http.Response, error) {
+	// Get test document from document service
+	docResponse, err := e.getTestDocument(docType, testType, fmt.Sprintf("scenario_%d", scenarioNum))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get test document: %w", err)
+	}
+
+	// Create multipart form data
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	// Add text fields
+	writer.WriteField("query", prompt)
+	writer.WriteField("test_type", testType)
+	writer.WriteField("scenario", fmt.Sprintf("%d", scenarioNum))
+
+	// Add document file
+	part, err := writer.CreateFormFile("document", docResponse.FileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	_, err = part.Write(docResponse.Content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write document: %w", err)
+	}
+
+	// Close the writer
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close writer: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest(method, url, &buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Make the request
+	return e.httpClient.Do(req)
+}
+
+// generateRequestPayload creates a request payload based on the schema from the JSON config
 func (e *EndpointEvaluator) generateRequestPayload(prompt, testType string, scenarioNum int) (map[string]interface{}, error) {
-	schema := e.endpointConfig.Endpoints.SingleEvaluation.RequestSchema
+	mainEndpoint, exists := e.endpointConfig.Endpoints["main"]
+	if !exists {
+		return nil, fmt.Errorf("main endpoint not found in configuration")
+	}
+	schema := mainEndpoint.RequestSchema
 	payload := make(map[string]interface{})
 
-	// Set required fields first
-	for _, requiredField := range schema.Required {
-		if property, exists := schema.Properties[requiredField]; exists {
-			payload[requiredField] = e.getDefaultValueForProperty(property, requiredField, prompt)
+	if schema == nil {
+		return payload, nil
+	}
+
+	// Get required fields
+	requiredFields := []string{}
+	if required, exists := schema["required"]; exists {
+		if requiredSlice, ok := required.([]interface{}); ok {
+			for _, field := range requiredSlice {
+				if fieldStr, ok := field.(string); ok {
+					requiredFields = append(requiredFields, fieldStr)
+				}
+			}
 		}
 	}
 
-	// Set optional fields with defaults
-	for fieldName, property := range schema.Properties {
-		if !contains(schema.Required, fieldName) {
-			if property.Default != nil {
-				payload[fieldName] = property.Default
-			} else {
-				payload[fieldName] = e.getDefaultValueForProperty(property, fieldName, prompt)
+	// Get properties
+	properties := make(map[string]interface{})
+	if props, exists := schema["properties"]; exists {
+		if propsMap, ok := props.(map[string]interface{}); ok {
+			properties = propsMap
+		}
+	}
+
+	// Set required fields first (skip document fields)
+	for _, requiredField := range requiredFields {
+		if property, exists := properties[requiredField]; exists {
+			propertyMap, ok := property.(map[string]interface{})
+			if !ok {
+				continue
 			}
+			// Skip document fields - they're handled separately in multipart form
+			if _, isDocument := propertyMap["x-document-type"]; isDocument {
+				continue
+			}
+			payload[requiredField] = e.getDefaultValueForProperty(propertyMap, requiredField, prompt)
+		}
+	}
+
+	// Set optional fields with defaults (skip document fields)
+	for fieldName, property := range properties {
+		// Skip if already set (required field)
+		if _, exists := payload[fieldName]; exists {
+			continue
+		}
+		propertyMap, ok := property.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		// Skip document fields
+		if _, isDocument := propertyMap["x-document-type"]; isDocument {
+			continue
+		}
+		// Skip if field is required (already handled above)
+		if contains(requiredFields, fieldName) {
+			continue
+		}
+
+		if defaultVal, hasDefault := propertyMap["default"]; hasDefault {
+			payload[fieldName] = defaultVal
+		} else {
+			payload[fieldName] = e.getDefaultValueForProperty(propertyMap, fieldName, prompt)
 		}
 	}
 
@@ -300,7 +594,7 @@ func (e *EndpointEvaluator) generateRequestPayload(prompt, testType string, scen
 }
 
 // getDefaultValueForProperty returns a default value for a schema property
-func (e *EndpointEvaluator) getDefaultValueForProperty(property SchemaProperty, fieldName, prompt string) interface{} {
+func (e *EndpointEvaluator) getDefaultValueForProperty(property map[string]interface{}, fieldName, prompt string) interface{} {
 	switch fieldName {
 	case "query", "prompt", "input", "message":
 		return prompt
@@ -322,11 +616,12 @@ func (e *EndpointEvaluator) getDefaultValueForProperty(property SchemaProperty, 
 		return ""
 	default:
 		// Use schema default if available
-		if property.Default != nil {
-			return property.Default
+		if defaultVal, hasDefault := property["default"]; hasDefault {
+			return defaultVal
 		}
 		// Use type-based defaults
-		switch property.Type {
+		propertyType, _ := property["type"].(string)
+		switch propertyType {
 		case "string":
 			return ""
 		case "number":

@@ -1,7 +1,7 @@
 {
-    "pythonPath": "/Users/brianjmarvin/Documents/Code/gpt-researcher-master/venv/bin/python",
-    "agentScript": "/Users/brianjmarvin/Documents/Code/gpt-researcher-friday/main.py",
-    "agentRootFolder": "/Users/brianjmarvin/Documents/Code/gpt-researcher-friday",
+    "baseURL": "http://localhost:8080",
+    "endpoint": "/api/v1/chatHandler",
+    "agentRootFolder": "/Users/brianjmarvin/Documents/Code/DataSnackOS-RISK/backend-RiskOS",
     "trackingEnabled": true,
     "agentPurpose": "The agent does research on the user's prompt and returns the results.",
     "testConfiguration": {
