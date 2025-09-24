@@ -4,40 +4,82 @@
       "provider": "gollm",
       "type": "openai",
       "model": "gpt-4o-mini",
+      "capabilities": ["text"],
       "envKey": "OPENAI_API_KEY",
+      "regionKey": "",
+      "secretKey": "",
       "description": "OpenAI GPT-4o-mini - Fast and cost-effective"
     },
     {
       "provider": "gollm", 
       "type": "anthropic",
       "model": "claude-3-5-sonnet-20240620",
+      "capabilities": ["text"],
       "envKey": "ANTHROPIC_API_KEY",
+      "regionKey": "",
+      "secretKey": "",
       "description": "Anthropic Claude 3.5 Sonnet - High quality responses"
     },
     {
       "provider": "gollm",
       "type": "groq", 
       "model": "llama-3.1-70b-versatile",
+      "capabilities": ["text"],
       "envKey": "GROQ_API_KEY",
+      "regionKey": "",
+      "secretKey": "",
       "description": "Groq Llama - Ultra-fast inference"
     },
     {
       "provider": "awsbedrock",
       "type": "bedrock",
-      "model": "anthropic.claude-3-5-sonnet-20240620-v2:0",
-      "envKey": "AWS_REGION",
-      "description": "AWS Bedrock Claude - Enterprise grade"
+      "model": "us.meta.llama4-maverick-17b-instruct-v1:0",
+      "capabilities": ["text"],
+      "envKey": "AWS_ACCESS_KEY_ID",
+      "regionKey": "AWS_REGION",
+      "secretKey": "AWS_SECRET_ACCESS_KEY",
+      "description": "AWS Bedrock Llama - Enterprise grade text"
+    },
+    {
+      "provider": "awsbedrock",
+      "type": "bedrock",
+      "model": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+      "capabilities": ["text"],
+      "envKey": "AWS_ACCESS_KEY_ID",
+      "regionKey": "AWS_REGION",
+      "secretKey": "AWS_SECRET_ACCESS_KEY",
+      "description": "AWS Bedrock Claude - Enterprise grade text"
+    },
+    {
+      "provider": "awsbedrock",
+      "type": "bedrock",
+      "model": "amazon.titan-image-generator-v2:0",
+      "capabilities": ["image"],
+      "envKey": "AWS_ACCESS_KEY_ID",
+      "regionKey": "AWS_REGION",
+      "secretKey": "AWS_SECRET_ACCESS_KEY",
+      "description": "AWS Bedrock Titan - Image generation"
+    },
+    {
+      "provider": "awsbedrock",
+      "type": "bedrock",
+      "model": "amazon.titan-embed-text-v1",
+      "capabilities": ["text"],
+      "envKey": "AWS_ACCESS_KEY_ID",
+      "regionKey": "AWS_REGION",
+      "secretKey": "AWS_SECRET_ACCESS_KEY",
+      "description": "AWS Bedrock Titan - Text embeddings"
     },
     {
       "provider": "gollm",
       "type": "ollama",
       "model": "llama3.2",
+      "capabilities": ["text"],
       "envKey": "OLLAMA_ENDPOINT",
-      "endpoint": "http://localhost:11434",
+      "regionKey": "",
+      "secretKey": "",
       "description": "Ollama Local - Complete privacy"
     }
-   
   ],
-  "fallbackToBedrock": true,
   "logProviderSelection": true
 }

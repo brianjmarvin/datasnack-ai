@@ -11,6 +11,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"datasnack/documentGenerator"
@@ -38,6 +40,21 @@ type DocumentResponse struct {
 	MimeType string `json:"mime_type"`
 	FileSize int64  `json:"file_size"`
 	Error    string `json:"error,omitempty"`
+}
+
+// TestTask represents a single test task to be executed
+type TestTask struct {
+	Prompt      string
+	TestType    string
+	ScenarioNum int
+	Iteration   int
+}
+
+// TestResult represents the result of a test task execution
+type TestResult struct {
+	TestType string
+	Metadata CallMetadata
+	Error    error
 }
 
 // EndpointEvaluator handles evaluation of any HTTP endpoint with JSON-defined schema
@@ -74,6 +91,69 @@ func NewEndpointEvaluator(ai AIClient, jsonConfigFile, agentPurpose string, test
 	var docGen *documentGenerator.DocumentGenerator
 	if ai != nil {
 		docGen = documentGenerator.NewDocumentGenerator(ai)
+	}
+
+	return &EndpointEvaluator{
+		ai:                ai,
+		jsonConfigFile:    jsonConfigFile,
+		agentPurpose:      agentPurpose,
+		testConfiguration: testConfig,
+		callHistory:       []CallMetadata{},
+		stressTestResults: &StressTestResults{
+			Vulnerabilities:     []Vulnerability{},
+			PromptOptimizations: []PromptOptimization{},
+			PerformanceMetrics:  make(map[string]interface{}),
+			Recommendations:     []string{},
+		},
+		endpointConfig: endpointConfig,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+		documentGenerator: docGen,
+	}, nil
+}
+
+// NewEndpointEvaluatorWithManager creates a new endpoint evaluator with AIClientManager for better capability support
+func NewEndpointEvaluatorWithManager(manager interface{}, jsonConfigFile, agentPurpose string, testConfig TestConfiguration) (*EndpointEvaluator, error) {
+	// Load endpoint configuration from JSON file
+	endpointConfig, err := loadEndpointConfig(jsonConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load endpoint config: %w", err)
+	}
+
+	// Wait for the endpoint to be ready (health check)
+	healthEndpoint, hasHealth := endpointConfig.Endpoints["health"]
+	if hasHealth {
+		if err := waitForEndpointReady(endpointConfig.Service.BaseURL, healthEndpoint.Path); err != nil {
+			log.Printf("Warning: Endpoint health check failed: %v", err)
+			// Continue anyway, as the endpoint might not have a health endpoint
+		}
+	}
+
+	// Initialize document generator with the AI client manager
+	var docGen *documentGenerator.DocumentGenerator
+	var ai AIClient
+
+	// Type assertion to get the manager
+	if aiManager, ok := manager.(interface {
+		GetTextClient() AIClient
+		GetImageClient() AIClient
+		HasImageCapability() bool
+	}); ok {
+		textClient := aiManager.GetTextClient()
+		imageClient := aiManager.GetImageClient()
+
+		if textClient != nil {
+			ai = textClient
+			if imageClient != nil {
+				// Use separate clients for text and image
+				docAIClient := documentGenerator.NewDocumentAIClientWithManager(textClient, imageClient)
+				docGen = documentGenerator.NewDocumentGeneratorWithAIClient(docAIClient)
+			} else {
+				// Use single client for both
+				docGen = documentGenerator.NewDocumentGenerator(textClient)
+			}
+		}
 	}
 
 	return &EndpointEvaluator{
@@ -289,43 +369,89 @@ func (e *EndpointEvaluator) RunComprehensiveVulnerabilityTest() (*StressTestResu
 		return nil, fmt.Errorf("failed to generate consistency prompts: %w", err)
 	}
 
-	// Run data leakage tests
-	log.Printf("Running %d data leakage tests...", len(dataLeakagePrompts))
+	// Create test tasks for parallel execution
+	var allTestTasks []TestTask
+
+	// Add data leakage test tasks
 	for i, prompt := range dataLeakagePrompts {
 		for j := 0; j < e.testConfiguration.IterationsPerTest; j++ {
-			metadata, err := e.runSingleTestScenario(prompt, "data_leakage", i+1)
-			if err != nil {
-				log.Printf("Data leakage test failed: %v", err)
-				continue
-			}
-			e.callHistory = append(e.callHistory, metadata)
+			allTestTasks = append(allTestTasks, TestTask{
+				Prompt:      prompt,
+				TestType:    "data_leakage",
+				ScenarioNum: i + 1,
+				Iteration:   j + 1,
+			})
 		}
 	}
 
-	// Run prompt injection tests
-	log.Printf("Running %d prompt injection tests...", len(promptInjectionPrompts))
+	// Add prompt injection test tasks
 	for i, prompt := range promptInjectionPrompts {
 		for j := 0; j < e.testConfiguration.IterationsPerTest; j++ {
-			metadata, err := e.runSingleTestScenario(prompt, "prompt_injection", i+1)
-			if err != nil {
-				log.Printf("Prompt injection test failed: %v", err)
-				continue
-			}
-			e.callHistory = append(e.callHistory, metadata)
+			allTestTasks = append(allTestTasks, TestTask{
+				Prompt:      prompt,
+				TestType:    "prompt_injection",
+				ScenarioNum: i + 1,
+				Iteration:   j + 1,
+			})
 		}
 	}
 
-	// Run consistency tests
-	log.Printf("Running %d consistency tests...", len(consistencyPrompts))
+	// Add consistency test tasks
 	for i, prompt := range consistencyPrompts {
 		for j := 0; j < e.testConfiguration.IterationsPerTest; j++ {
-			metadata, err := e.runSingleTestScenario(prompt, "consistency", i+1)
-			if err != nil {
-				log.Printf("Consistency test failed: %v", err)
-				continue
-			}
-			e.callHistory = append(e.callHistory, metadata)
+			allTestTasks = append(allTestTasks, TestTask{
+				Prompt:      prompt,
+				TestType:    "consistency",
+				ScenarioNum: i + 1,
+				Iteration:   j + 1,
+			})
 		}
+	}
+
+	// Log test breakdown
+	dataLeakageCount := len(dataLeakagePrompts) * e.testConfiguration.IterationsPerTest
+	promptInjectionCount := len(promptInjectionPrompts) * e.testConfiguration.IterationsPerTest
+	consistencyCount := len(consistencyPrompts) * e.testConfiguration.IterationsPerTest
+
+	log.Printf("Test breakdown:")
+	log.Printf("  - Data leakage tests: %d prompts × %d iterations = %d tests",
+		len(dataLeakagePrompts), e.testConfiguration.IterationsPerTest, dataLeakageCount)
+	log.Printf("  - Prompt injection tests: %d prompts × %d iterations = %d tests",
+		len(promptInjectionPrompts), e.testConfiguration.IterationsPerTest, promptInjectionCount)
+	log.Printf("  - Consistency tests: %d prompts × %d iterations = %d tests",
+		len(consistencyPrompts), e.testConfiguration.IterationsPerTest, consistencyCount)
+	log.Printf("  - Total tests: %d", len(allTestTasks))
+
+	// Run all tests in parallel with max concurrency of 5
+	log.Printf("Running %d total tests in parallel (max 5 concurrent)...", len(allTestTasks))
+	results := e.runTestsInParallel(allTestTasks, 5)
+
+	// Process results and add to call history
+	successfulTests := 0
+	failedTests := 0
+	testTypeStats := make(map[string]int)
+
+	for _, result := range results {
+		if result.Error != nil {
+			log.Printf("%s test failed: %v", result.TestType, result.Error)
+			failedTests++
+			testTypeStats[result.TestType+"_failed"]++
+			continue
+		}
+		e.callHistory = append(e.callHistory, result.Metadata)
+		successfulTests++
+		testTypeStats[result.TestType+"_success"]++
+	}
+
+	// Log final statistics
+	log.Printf("Test execution completed:")
+	log.Printf("  - Successful tests: %d", successfulTests)
+	log.Printf("  - Failed tests: %d", failedTests)
+	log.Printf("  - Success rate: %.1f%%", float64(successfulTests)/float64(len(results))*100)
+
+	// Log per-test-type statistics
+	for testType, count := range testTypeStats {
+		log.Printf("  - %s: %d", testType, count)
 	}
 
 	// Analyze results
@@ -393,6 +519,72 @@ func (e *EndpointEvaluator) runSingleTestScenario(prompt, testType string, scena
 			"json_config": e.jsonConfigFile,
 		},
 	}, nil
+}
+
+// runTestsInParallel executes test tasks in parallel with a maximum concurrency limit
+func (e *EndpointEvaluator) runTestsInParallel(tasks []TestTask, maxConcurrency int) []TestResult {
+	if len(tasks) == 0 {
+		return []TestResult{}
+	}
+
+	log.Printf("Starting parallel execution with %d workers for %d tasks", maxConcurrency, len(tasks))
+	startTime := time.Now()
+
+	// Create channels for task distribution and result collection
+	taskChan := make(chan TestTask, len(tasks))
+	resultChan := make(chan TestResult, len(tasks))
+
+	// Send all tasks to the task channel
+	for _, task := range tasks {
+		taskChan <- task
+	}
+	close(taskChan)
+
+	// Start worker goroutines
+	var wg sync.WaitGroup
+	completedTasks := int32(0)
+
+	for i := 0; i < maxConcurrency; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for task := range taskChan {
+				// Execute the test scenario
+				metadata, err := e.runSingleTestScenario(task.Prompt, task.TestType, task.ScenarioNum)
+
+				// Send result to result channel
+				resultChan <- TestResult{
+					TestType: task.TestType,
+					Metadata: metadata,
+					Error:    err,
+				}
+
+				// Log progress every 10 completed tasks
+				completed := atomic.AddInt32(&completedTasks, 1)
+				if completed%10 == 0 || int(completed) == len(tasks) {
+					log.Printf("Progress: %d/%d tests completed (%.1f%%)",
+						completed, len(tasks), float64(completed)/float64(len(tasks))*100)
+				}
+			}
+		}(i)
+	}
+
+	// Wait for all workers to complete
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect all results
+	var results []TestResult
+	for result := range resultChan {
+		results = append(results, result)
+	}
+
+	elapsed := time.Since(startTime)
+	log.Printf("Parallel execution completed in %.2f seconds", elapsed.Seconds())
+
+	return results
 }
 
 // callEvaluationEndpoint makes an HTTP request to the evaluation endpoint using dynamic schema

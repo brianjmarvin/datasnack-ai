@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,13 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 )
 
-const MODEL = "us.meta.llama4-maverick-17b-instruct-v1:0"
-
-// us.meta.llama4-maverick-17b-instruct-v1:0
-// "us.meta.llama4-scout-17b-instruct-v1:0"
-// us.meta.llama3-1-70b-instruct-v1:0
-// us.anthropic.claude-3-5-haiku-20241022-v1:0
-
 type Message struct {
 	Role    string `json:"role"`
 	Content any    `json:"content"`
@@ -29,9 +22,22 @@ type Message struct {
 
 type SCHEMA string
 
+// New creates a new Bedrock client with default model
 func New() *BedrockClient {
+	return NewWithModel("us.meta.llama4-maverick-17b-instruct-v1:0")
+}
+
+// NewWithModel creates a new Bedrock client with a specific model
+func NewWithModel(modelID string) *BedrockClient {
 	ctx := context.Background()
-	sdkConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"))
+
+	// Get region from environment variable
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "us-east-1" // Default region
+	}
+
+	sdkConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
 		fmt.Println("Couldn't load default configuration. Have you set up your AWS account?")
 		fmt.Println(err)
@@ -41,12 +47,14 @@ func New() *BedrockClient {
 	client := bedrockruntime.NewFromConfig(sdkConfig)
 	return &BedrockClient{
 		BedrockRuntimeClient: client,
+		ModelID:              modelID,
 	}
 
 }
 
 type BedrockClient struct {
 	BedrockRuntimeClient *bedrockruntime.Client
+	ModelID              string
 	Request              any
 	System               string
 	PastMessages         []Message
@@ -69,7 +77,7 @@ func removeJsonAItags(content string) string {
 }
 
 func (wrapper BedrockClient) GenerateAI(request string, system string, pastMessages []map[string]string) (string, error) {
-	modelId := MODEL
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 	var contentBlocks []types.Message
 
@@ -120,7 +128,7 @@ func (wrapper BedrockClient) GenerateAI(request string, system string, pastMessa
 }
 
 func (wrapper BedrockClient) AnthropicAI(request any, system string, pastMessages []Message) (string, error) {
-	modelId := "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 	var contentBlocks []types.Message
 
@@ -171,8 +179,7 @@ func (wrapper BedrockClient) AnthropicAI(request any, system string, pastMessage
 }
 
 func (wrapper BedrockClient) GetEmbeddings(prompt string) ([]float32, error) {
-	// modelId := "amazon.titan-embed-text-v2:0"
-	modelId := "amazon.titan-embed-text-v1"
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 	body, err := json.Marshal(Embedding{
 		InputText: prompt,
@@ -201,7 +208,7 @@ func (wrapper BedrockClient) GetEmbeddings(prompt string) ([]float32, error) {
 }
 
 func (wrapper BedrockClient) AnthropicAISchema(request any, system string, pastMessages []Message, schema SCHEMA) (string, error) {
-	modelId := "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 
 	// past messages
@@ -327,7 +334,7 @@ func (wrapper BedrockClient) AnthropicAISchema(request any, system string, pastM
 }
 
 func (wrapper BedrockClient) GenerateAISchema(request string, system string, pastMessages []map[string]string, schema string) (string, error) {
-	modelId := MODEL
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 
 	// past messages

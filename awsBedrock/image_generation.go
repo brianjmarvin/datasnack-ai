@@ -34,7 +34,7 @@ type ImageGenerationResponse struct {
 
 // GenerateImage creates and returns an image based on text description using Amazon Titan Image Generator
 func (wrapper BedrockClient) GenerateImage(textDescription string) ([]byte, error) {
-	modelId := "amazon.titan-image-generator-v2:0"
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 
 	// Create the request payload
@@ -92,7 +92,7 @@ func (wrapper BedrockClient) GenerateImage(textDescription string) ([]byte, erro
 
 // GenerateImageWithConfig creates and returns an image based on text description with custom configuration
 func (wrapper BedrockClient) GenerateImageWithConfig(textDescription string, config ImageGenerationConfig) ([]byte, error) {
-	modelId := "amazon.titan-image-generator-v2:0"
+	modelId := wrapper.ModelID
 	ctx := context.TODO()
 
 	// Create the request payload

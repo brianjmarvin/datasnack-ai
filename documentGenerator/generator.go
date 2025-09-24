@@ -24,6 +24,13 @@ func NewDocumentGenerator(aiClient AIClient) *DocumentGenerator {
 	}
 }
 
+// NewDocumentGeneratorWithAIClient creates a new document generator with a specific DocumentAIClient
+func NewDocumentGeneratorWithAIClient(aiClient *DocumentAIClient) *DocumentGenerator {
+	return &DocumentGenerator{
+		aiClient: aiClient,
+	}
+}
+
 // GenerateDocument generates a document based on the request
 func (dg *DocumentGenerator) GenerateDocument(ctx context.Context, req *DocumentRequest) (*DocumentResponse, error) {
 	// Set default values
@@ -251,12 +258,12 @@ Request: %s
 Error: %s
 
 This is a placeholder document because the image generation service is currently unavailable.
-The AI image generation feature requires proper AWS Bedrock configuration and valid model access.
+The AI image generation feature requires proper configuration and valid model access.
 
 To resolve this issue:
-1. Verify AWS credentials are properly configured
-2. Ensure the Titan Image Generator model is available in your AWS region
-3. Check that your AWS account has the necessary permissions for Bedrock
+1. Verify your AI client configuration includes an image-capable model
+2. Ensure the required environment variables are set (e.g., AWS credentials for Bedrock)
+3. Check that your AI provider has image generation capabilities
 
 Generated on: %s`, req.Content, err.Error(), time.Now().Format(time.RFC3339))
 

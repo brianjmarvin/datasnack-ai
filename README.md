@@ -1,104 +1,130 @@
-# 🛡️ DataSnack AI Security Tester
+# 🤖 DataSnack AI Agent Evaluator
 
-A super easy CLI tool that tests any AI endpoint for security problems! 🚀
+*A hastily cobbled-together CLI tool that tests AI agents to see if they actually work (because we got tired of manually writing test prompts)*
 
-## 🎯 What This Tool Does
+## 🤷‍♂️ What This Actually Is
 
-Think of this as a security guard for your AI endpoints. It automatically:
-- 🔍 **Finds security holes** in your AI endpoints
-- 🧪 **Tests with tricky prompts** to see if your AI can be tricked
-- 📊 **Checks for data leaks** - making sure your AI doesn't spill secrets
-- 📄 **Tests file uploads** - CSV, PDF, images, you name it!
-- 🤖 **Uses AI to test AI** - pretty cool, right?
+Look, we were building AI agents and got really tired of:
+- Manually crafting test prompts to see if our AI would work properly
+- Writing the same boring test documents over and over
+- Forgetting to test basic functionality (again)
+- Spending hours thinking of edge cases
 
-## 🚀 Quick Start (5 minutes!)
+So we hacked together this tool. It's not perfect, it's not enterprise-grade, but it's *really* good for the early stages when you just need to know "does my AI agent actually work?"
 
-### 1. Build the tool
+## 🎯 What It Actually Does
+
+This tool is basically a lazy developer's best friend for AI testing:
+
+- 🧪 **Generates test prompts automatically** - No more thinking "what should I test?"
+- 📄 **Creates test documents on the fly** - CSV, PDF, images, whatever you need
+- 🔍 **Tests basic functionality** - Does it respond? Does it handle different inputs?
+- 🤖 **Uses AI to test AI** - Meta, right?
+- ⚡ **Runs tests in parallel** - Because waiting is for chumps
+
+## 🚀 Quick Start (Seriously, 5 minutes)
+
+### 1. Build the thing
 ```bash
 git clone https://github.com/brianjmarvin/DataSnackOS-RISK.git
 cd code-check-cli
 go build -o datasnack
 ```
 
-### 2. Create a simple config file
-Create `config/my-endpoint.json`:
-```json
-{
-  "service": {
-    "name": "My AI Service",
-    "base_url": "http://localhost:8080",
-    "description": "My awesome AI endpoint"
-  },
-  "endpoints": {
-    "health": {
-      "path": "/health",
-      "method": "GET",
-      "description": "Health check"
-    },
-    "single_evaluation": {
-      "path": "/api/chat",
-      "method": "POST",
-      "description": "Main chat endpoint",
-      "request_schema": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "User message"
-          }
-        },
-        "required": ["message"]
-      }
-    }
-  }
-}
-```
-
-### 3. Run the test! 🎉
+### 2. Set up your AI provider (pick one)
 ```bash
-./datasnack endpointEval config/my-endpoint.json
+# Option 1: Use OpenAI (easiest)
+export OPENAI_API_KEY="sk-your-key-here"
+
+# Option 2: Use Ollama (completely free, runs locally)
+ollama serve
+ollama pull llama3.2
+export OLLAMA_ENDPOINT="http://localhost:11434"
+
+# Option 3: Use Anthropic (if you're fancy)
+export ANTHROPIC_API_KEY="your-key-here"
 ```
 
-That's it! The tool will test your endpoint and save results to `results/` folder.
-
-## 📋 Main Commands
-
-### 🔍 `analyze` - Smart Endpoint Discovery
-Automatically figures out what your AI endpoint needs:
-
+### 3. Point it at your AI code and let it figure things out
 ```bash
-./datasnack analyze /path/to/your/ai/code
+# This will scan your code and create a test config automatically
+./datasnack analyze /path/to/your/ai/project
 ```
 
-**What it does:**
-- 🔎 **Scans your code** (Python, JavaScript, Go)
-- 🧠 **Uses AI to understand** what your endpoint expects
-- 📝 **Creates a perfect config** file for testing
-- 🎯 **No manual work needed!**
+### 4. Run the tests
+```bash
+# This will test your endpoint with a bunch of generated prompts
+./datasnack endpointEval config/endpoint_config_YYYYMMDD_HHMMSS.json
+```
 
-**Example:**
+That's it! Check the `results/` folder for your test results.
+
+## 📋 The Two Commands You Actually Need
+
+### 🔍 `analyze` - "Figure out what my AI does"
+This is the lazy way. Point it at your AI code and it will:
+- Scan your Python/JavaScript/Go code
+- Use AI to understand what your endpoint expects
+- Generate a complete test configuration
+- Save you from having to think about schemas
+
 ```bash
 ./datasnack analyze /Users/me/my-ai-project
 # Creates: config/endpoint_config_20250123_143022.json
 ```
 
-### 🧪 `endpointEval` - Security Testing
-Tests your endpoint for security problems:
+### 🧪 `endpointEval` - "Test my AI to see if it works"
+This runs the actual functionality tests:
+- **Data Leakage Tests** - "Can I trick it into revealing secrets?"
+- **Prompt Injection Tests** - "Can I break it with malicious prompts?"
+- **Consistency Tests** - "Does it give the same answer twice?"
+- **Document Tests** - "Can it handle files without exploding?"
 
 ```bash
 ./datasnack endpointEval config/endpoint_config_20250123_143022.json
 ```
 
-**What it tests:**
-- 🕵️ **Data Leakage** - Can your AI be tricked into revealing secrets?
-- 💉 **Prompt Injection** - Can malicious prompts break your AI?
-- 🔄 **Consistency** - Does your AI give the same answer to similar questions?
-- 📄 **File Uploads** - Can your AI handle documents safely?
+## ⚙️ Configuration (The Boring Part)
 
-## ⚙️ Configuration Made Easy
+### AI Provider Setup (`config/aiClientConfig.json`)
+This tells the tool which AI to use for generating test prompts. The format supports multiple models for different capabilities:
 
-### 🤖 AI Provider Setup (`config/agentConfig.json`)
-Tell the tool which AI to use for testing:
+```json
+{
+  "preferredOrder": [
+    {
+      "provider": "gollm",
+      "type": "openai",
+      "model": "gpt-4o-mini",
+      "capabilities": ["text"],
+      "envKey": "OPENAI_API_KEY",
+      "regionKey": "",
+      "secretKey": "",
+      "description": "OpenAI GPT-4o-mini - Fast and cost-effective"
+    },
+    {
+      "provider": "awsbedrock",
+      "type": "bedrock",
+      "model": "amazon.titan-image-generator-v2:0",
+      "capabilities": ["image"],
+      "envKey": "AWS_ACCESS_KEY_ID",
+      "regionKey": "AWS_REGION",
+      "secretKey": "AWS_SECRET_ACCESS_KEY",
+      "description": "AWS Bedrock Titan - Image generation"
+    }
+  ],
+  "logProviderSelection": true
+}
+```
+
+**Configuration options:**
+- `capabilities` array: `["text"]`, `["image"]`, or `["text", "image"]`
+- `regionKey` and `secretKey` for AWS Bedrock (blank for others)
+- `envKey` for API keys or endpoints (like `OLLAMA_ENDPOINT` for Ollama)
+- `logProviderSelection` to see which AI provider is being used
+
+### Agent Configuration (`config/agentConfig.json`)
+Basic setup for the analyze command:
 
 ```json
 {
@@ -116,36 +142,9 @@ Tell the tool which AI to use for testing:
 }
 ```
 
-### 🔑 AI Client Setup (`config/aiClientConfig.json`)
-Choose which AI provider to use for generating test prompts:
+## 🎨 Document Testing (The Cool Part)
 
-```json
-{
-  "preferredOrder": [
-    {
-      "provider": "gollm",
-      "type": "openai",
-      "model": "gpt-4o-mini",
-      "envKey": "OPENAI_API_KEY",
-      "description": "OpenAI GPT-4o-mini - Fast and cost-effective"
-    },
-    {
-      "provider": "gollm",
-      "type": "ollama",
-      "model": "llama3.2",
-      "envKey": "OLLAMA_ENDPOINT",
-      "endpoint": "http://localhost:11434",
-      "description": "Ollama Local - Complete privacy"
-    }
-  ],
-  "fallbackToBedrock": true,
-  "logProviderSelection": true
-}
-```
-
-## 🎨 Document Testing Magic
-
-The tool can test endpoints that accept files! Just add this to your config:
+The tool can generate and test with real documents! Just add this to your endpoint config:
 
 ```json
 {
@@ -158,7 +157,7 @@ The tool can test endpoints that accept files! Just add this to your config:
       },
       "document": {
         "type": "string",
-        "description": "Document to analyze (file upload)",
+        "description": "Document to analyze",
         "x-document-type": "csv",
         "x-document-description": "CSV with customer data: name, email, phone"
       }
@@ -173,75 +172,8 @@ The tool can test endpoints that accept files! Just add this to your config:
 - 📄 **PDF** - Documents and reports  
 - 🖼️ **Images** - PNG, JPG, etc.
 - 📝 **Text** - Plain text files
-- 📋 **JSON** - Structured data
 
-## 🌟 Real Examples
-
-### Example 1: Simple Chat API
-```json
-{
-  "service": {
-    "name": "Chat API",
-    "base_url": "https://api.mychat.com"
-  },
-  "endpoints": {
-    "single_evaluation": {
-      "path": "/v1/chat",
-      "method": "POST",
-      "request_schema": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "User message"
-          },
-          "temperature": {
-            "type": "number",
-            "default": 0.7
-          }
-        },
-        "required": ["message"]
-      }
-    }
-  }
-}
-```
-
-### Example 2: Document Analysis API
-```json
-{
-  "service": {
-    "name": "Document Analyzer",
-    "base_url": "https://api.doc-analyzer.com"
-  },
-  "endpoints": {
-    "single_evaluation": {
-      "path": "/analyze",
-      "method": "POST",
-      "request_schema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "What to extract from the document"
-          },
-          "document": {
-            "type": "string",
-            "description": "PDF document to analyze",
-            "x-document-type": "pdf",
-            "x-document-description": "Financial report with tables and charts"
-          }
-        },
-        "required": ["query", "document"]
-      }
-    }
-  }
-}
-```
-
-## 🤖 AI Providers
-
-The tool works with many AI providers:
+## 🤖 AI Providers (Pick Your Poison)
 
 | Provider | Setup | Best For |
 |----------|-------|----------|
@@ -251,7 +183,7 @@ The tool works with many AI providers:
 | 🏠 **Ollama** | `ollama serve` | Local & private |
 | ☁️ **AWS Bedrock** | AWS credentials | Enterprise |
 
-### 🏠 Local Testing (No API Keys!)
+### 🏠 Local Testing (No API Keys Required!)
 ```bash
 # Install Ollama
 ollama serve
@@ -285,50 +217,52 @@ After testing, check `results/endpoint_evaluation_results_TIMESTAMP.json`:
 }
 ```
 
-## 🆘 Troubleshooting
+## 🆘 Troubleshooting (When Things Go Wrong)
 
 ### ❌ "No AI providers could be initialized"
-**Fix:** Set an API key or use Ollama
+**Translation:** "You forgot to set up an AI provider"
 ```bash
 export OPENAI_API_KEY="sk-your-key-here"
 # OR
 ollama serve
 ```
 
+### ❌ "Failed to initialize text AI client"
+**Translation:** "The tool needs at least one text AI to work"
+- Make sure you have a text-capable model in your config
+- Check your API keys
+- For Ollama, make sure it's running
+
 ### ❌ "Endpoint health check failed"
-**Fix:** Make sure your endpoint is running
+**Translation:** "Your endpoint isn't running or doesn't have a health endpoint"
 ```bash
 curl http://localhost:8080/health
 ```
 
-### ❌ "Config file not found"
-**Fix:** Check the file path
-```bash
-ls config/
-./datasnack endpointEval config/your-file.json
-```
+### ❌ "No image AI client available"
+**Translation:** "Image generation isn't available, but that's okay"
+- The tool will still work for text-only testing
+- Add an image-capable model to your config if you need image testing
 
-### ❌ "Document generation failed"
-**Fix:** The tool now generates documents locally! No external service needed.
+## 🎉 Why This Tool Exists
 
-## 🎉 What Makes This Special?
+Look, we're not claiming this is the most sophisticated AI testing tool ever built. It's not. But it's really good at:
 
-- 🧠 **AI-Powered Testing** - Uses AI to create smart test cases
-- 🔄 **Auto-Discovery** - Figures out your endpoint automatically  
-- 📄 **Document Support** - Tests file uploads with real documents
-- 🏠 **Local Testing** - Works completely offline with Ollama
-- 🎯 **Zero Config** - Just point it at your code and go!
-- 🛡️ **Comprehensive** - Tests all the security stuff you'd forget
+- **Early-stage testing** - When you just need to know if your AI does obviously stupid things
+- **Saving time** - No more manually writing test prompts and documents
+- **Catching the basics** - Basic functionality, consistency, edge cases
+- **Being lazy-friendly** - Point it at your code and let it figure things out
 
 ## 🚀 Ready to Test?
 
 1. **Build the tool** (2 minutes)
-2. **Point it at your code** with `analyze` (1 minute)
-3. **Run security tests** with `endpointEval` (5 minutes)
-4. **Review results** and fix any issues! 🎯
+2. **Set up an AI provider** (1 minute)
+3. **Point it at your code** with `analyze` (1 minute)
+4. **Run functionality tests** with `endpointEval` (5 minutes)
+5. **Review results** and fix the obvious issues! 🎯
 
-**That's it!** Your AI endpoint is now security-tested and ready for production! 🎉
+**That's it!** Your AI agent is now tested for basic functionality. Is it production-ready? Probably not. But at least you know it won't crash when someone sends it a weird prompt.
 
 ---
 
-*Need help? Check the examples above or open an issue on GitHub!* 💬
+*This tool was hacked together by developers who got tired of manually testing AI agents. It's not perfect, but it's better than nothing.* 🤷‍♂️

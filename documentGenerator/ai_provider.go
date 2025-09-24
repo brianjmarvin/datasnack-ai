@@ -3,6 +3,7 @@ package documentGenerator
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 )
 
@@ -16,25 +17,43 @@ type AIClient interface {
 
 // DocumentAIClient wraps the cloneAttack.AIClient to provide document-specific methods
 type DocumentAIClient struct {
-	client AIClient
+	textClient  AIClient
+	imageClient AIClient
 }
 
-// NewDocumentAIClient creates a new document AI client wrapper
+// NewDocumentAIClient creates a new document AI client wrapper with a single client
 func NewDocumentAIClient(client AIClient) *DocumentAIClient {
-	return &DocumentAIClient{client: client}
+	return &DocumentAIClient{
+		textClient:  client,
+		imageClient: client, // Use the same client for both text and image
+	}
 }
 
-// GenerateText generates text content using the AI client
+// NewDocumentAIClientWithManager creates a new document AI client wrapper with separate text and image clients
+func NewDocumentAIClientWithManager(textClient, imageClient AIClient) *DocumentAIClient {
+	return &DocumentAIClient{
+		textClient:  textClient,
+		imageClient: imageClient,
+	}
+}
+
+// GenerateText generates text content using the text AI client
 func (d *DocumentAIClient) GenerateText(ctx context.Context, model string, prompt string) (string, error) {
-	// Use the existing AI client's GenerateAI method
+	if d.textClient == nil {
+		return "", fmt.Errorf("text AI client not available")
+	}
+	// Use the text AI client's GenerateAI method
 	systemPrompt := "You are a helpful assistant that generates content for documents."
-	return d.client.GenerateAI(prompt, systemPrompt, nil)
+	return d.textClient.GenerateAI(prompt, systemPrompt, nil)
 }
 
 // GenerateImage generates an image based on the prompt
 func (d *DocumentAIClient) GenerateImage(ctx context.Context, prompt string) (io.Reader, error) {
-	// Use the AI client's GenerateImage method
-	imageData, err := d.client.GenerateImage(prompt)
+	if d.imageClient == nil {
+		return nil, fmt.Errorf("image AI client not available")
+	}
+	// Use the image AI client's GenerateImage method
+	imageData, err := d.imageClient.GenerateImage(prompt)
 	if err != nil {
 		return nil, err
 	}
