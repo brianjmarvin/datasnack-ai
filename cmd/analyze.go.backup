@@ -885,12 +885,12 @@ func (a *AgentAnalyzer) extractJavaScriptSchemaHints(content, framework string) 
 	// Common patterns for different frameworks
 	patterns := map[string][]string{
 		"express": {
-			`req\.body\.(\w+)`,                        // Express body parsing
-			`req\.params\.(\w+)`,                      // URL parameters
-			`req\.query\.(\w+)`,                       // Query parameters
-			`const\s+(\w+)\s*=\s*req\.body\.(\w+)`,    // Destructuring
+			`req\.body\.(\w+)`,                     // Express body parsing
+			`req\.params\.(\w+)`,                   // URL parameters
+			`req\.query\.(\w+)`,                    // Query parameters
+			`const\s+(\w+)\s*=\s*req\.body\.(\w+)`, // Destructuring
 			`const\s*\{\s*(\w+)\s*\}\s*=\s*req\.body`, // Object destructuring
-			`req\.body\[['"](\w+)['"]\]`,              // Bracket notation
+			`req\.body\[['"](\w+)['"]\]`,           // Bracket notation
 		},
 		"fastify": {
 			`request\.body\.(\w+)`,
@@ -987,12 +987,14 @@ func (a *AgentAnalyzer) extractGoSchemaHints(content, framework string) map[stri
 
 		for _, match := range matches {
 			if len(match) > 2 {
-				_ = match[1] // structName - not used in current implementation
+				structName := match[1]
 				structBody := match[2]
 
 				// Parse struct fields with more flexible patterns
 				fieldPatterns := []string{
 					`(\w+)\s+(\w+)\s+` + "`" + `json:"([^"]*)"` + "`",
+					`(\w+)\s+(\w+)\s+` + "`" + `json:"([^"]*)"\s+([^`]+)` + "`",
+					`(\w+)\s+(\w+)\s+` + "`" + `([^`]+)` + "`",
 				}
 
 				for _, fieldPattern := range fieldPatterns {
@@ -1165,7 +1167,7 @@ func (a *AgentAnalyzer) extractPythonSchemaHints(content, framework string) map[
 	for _, pattern := range requestBodyPatterns {
 		re := regexp.MustCompile(pattern)
 		matches := re.FindAllStringSubmatch(content, -1)
-		for range matches {
+		for _, match := range matches {
 			// Look for variable assignments around this pattern
 			contextPattern := `(\w+)\s*=\s*` + regexp.QuoteMeta(pattern)
 			contextRe := regexp.MustCompile(contextPattern)

@@ -1,0 +1,318 @@
+{
+  "endpoints": {
+    "health": {
+      "description": "Health check endpoint",
+      "method": "GET",
+      "path": "/health"
+    },
+    "main": {
+      "description": "Main AI agent endpoint",
+      "method": "POST",
+      "path": "/api/v1/chatHandler",
+      "request_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Message": {
+            "properties": {
+              "createdAt": {
+                "description": "ISO 8601 timestamp for when the message was created",
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "description": "Unique identifier for the message",
+                "type": "string"
+              },
+              "message": {
+                "description": "The message content",
+                "type": "string"
+              },
+              "section": {
+                "description": "Chat section identifier",
+                "type": "string"
+              },
+              "senderType": {
+                "description": "Type of sender (user or assistant)",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "description": "Schema for the request payload of the main endpoint (/api/v1/chatHandler)",
+        "properties": {
+          "accountValidated": {
+            "description": "The accountValidated field",
+            "example": true,
+            "type": "boolean"
+          },
+          "body": {
+            "description": "Request body content",
+            "example": "Request body content",
+            "type": "string"
+          },
+          "chatbotUrl": {
+            "description": "The chatbotUrl field",
+            "example": "example_chatbotUrl",
+            "type": "string"
+          },
+          "companyName": {
+            "description": "The companyName field",
+            "example": "example_companyName",
+            "type": "string"
+          },
+          "contactId": {
+            "description": "The contactId field",
+            "example": "example_contactId",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "ISO 8601 timestamp for when the message was created",
+            "format": "date-time",
+            "type": "string",
+            "default": "2025-09-23T12:00:00Z"
+          },
+          "description": {
+            "description": "The description field",
+            "example": "example_description",
+            "type": "string"
+          },
+          "email": {
+            "description": "The email field",
+            "example": "user@example.com",
+            "format": "email",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "The fullName field",
+            "example": "example_fullName",
+            "type": "string"
+          },
+          "goCode": {
+            "description": "The goCode field",
+            "example": "example_goCode",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the message",
+            "example": "msg_123456789",
+            "type": "string"
+          },
+          "interactiveMock": {
+            "description": "The interactiveMock field",
+            "example": "example_interactiveMock",
+            "type": "string"
+          },
+          "isActive": {
+            "description": "The isActive field",
+            "example": true,
+            "type": "boolean"
+          },
+          "message": {
+            "description": "The message content to be processed",
+            "example": "Hello, how can I help you?",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name field",
+            "example": "example_name",
+            "type": "string"
+          },
+          "note": {
+            "description": "The note field",
+            "example": "example_note",
+            "type": "string"
+          },
+          "pastMessages": {
+            "description": "Array of previous messages",
+            "items": {
+              "$ref": "#/definitions/Message"
+            },
+            "type": "array"
+          },
+          "processList": {
+            "description": "The processList field",
+            "example": "example_processList",
+            "type": "string"
+          },
+          "projectID": {
+            "description": "The projectID field",
+            "example": "project_123456789",
+            "type": "string",
+            "default": "d4d7b04e-9eb3-497b-a6d9-5e53cb0a5753"
+          },
+          "requestType": {
+            "description": "The requestType field",
+            "example": "example_requestType",
+            "type": "string"
+          },
+          "section": {
+            "description": "Chat section identifier",
+            "example": "general",
+            "default": "AI WORKFLOW",
+            "type": "string"
+          },
+          "senderType": {
+            "description": "Type of sender (user or assistant)",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "example": "user",
+            "type": "string"
+          },
+          "status": {
+            "description": "The status field",
+            "example": "example_status",
+            "type": "string"
+          },
+          "totalResults": {
+            "description": "The totalResults field",
+            "example": 10,
+            "type": "number"
+          },
+          "type": {
+            "description": "The type field",
+            "example": "example_type",
+            "type": "string"
+          },
+          "userID": {
+            "description": "The userID field",
+            "example": "user_123456789",
+            "type": "string",
+            "default": "W2Ln6knvwtfMcHEMuwQrAjTTKIr1"
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "senderType",
+          "userID",
+          "projectID",
+          "section"
+        ],
+        "title": "AI Agent Request Payload Schema",
+        "type": "object"
+      },
+      "response_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "JSON schema for the response payload of the AI research agent's main endpoint",
+        "oneOf": [
+          {
+            "required": [
+              "data",
+              "metadata"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "properties": {
+          "data": {
+            "properties": {
+              "results": {
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "Unique identifier for the result",
+                      "type": "string"
+                    },
+                    "relevance": {
+                      "description": "Relevance score of the result",
+                      "type": "number"
+                    },
+                    "source": {
+                      "description": "Source of the result",
+                      "type": "string"
+                    },
+                    "text": {
+                      "description": "Text content of the result",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text",
+                    "source",
+                    "relevance"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "totalResults": {
+                "description": "Total number of results found",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "results",
+              "totalResults"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "properties": {
+              "code": {
+                "description": "Error code",
+                "type": "string"
+              },
+              "details": {
+                "description": "Detailed error information",
+                "type": "string"
+              },
+              "message": {
+                "description": "Error message",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "metadata": {
+            "properties": {
+              "processingTime": {
+                "description": "Time taken to process the request in seconds",
+                "type": "number"
+              },
+              "requestId": {
+                "description": "Unique identifier for the request",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status of the request processing",
+                "enum": [
+                  "success",
+                  "partial_success",
+                  "failure"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "processingTime",
+              "status",
+              "requestId"
+            ],
+            "type": "object"
+          }
+        },
+        "title": "AI Research Agent Response Schema",
+        "type": "object"
+      }
+    }
+  },
+  "service": {
+    "base_url": "http://localhost:8080",
+    "description": "The agent does research on the user's prompt and returns the results.",
+    "name": "AI Agent Service",
+    "version": "1.0.0"
+  }
+}

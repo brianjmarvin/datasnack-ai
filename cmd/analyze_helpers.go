@@ -101,19 +101,48 @@ func (a *AgentAnalyzer) isFieldRequired(fieldName, content string) bool {
 
 func (a *AgentAnalyzer) generateFieldDescription(fieldName string) string {
 	descriptions := map[string]string{
-		"query":     "The input query or prompt for the AI agent",
-		"prompt":    "The prompt or instruction for the AI agent",
-		"input":     "The input data for processing",
-		"message":   "The message content to be processed",
-		"text":      "The text content to be analyzed",
-		"question":  "The question to be answered",
-		"context":   "Additional context for the request",
-		"options":   "Configuration options for the request",
-		"settings":  "Settings and parameters for the request",
-		"metadata":  "Metadata associated with the request",
-		"userId":    "Unique identifier for the user",
-		"sessionId": "Unique identifier for the session",
-		"timestamp": "Timestamp of the request",
+		"query":        "The input query or prompt for the AI agent",
+		"prompt":       "The prompt or instruction for the AI agent",
+		"input":        "The input data for processing",
+		"message":      "The message content to be processed",
+		"text":         "The text content to be analyzed",
+		"question":     "The question to be answered",
+		"context":      "Additional context for the request",
+		"options":      "Configuration options for the request",
+		"settings":     "Settings and parameters for the request",
+		"metadata":     "Metadata associated with the request",
+		"userId":       "Unique identifier for the user",
+		"sessionId":    "Unique identifier for the session",
+		"timestamp":    "Timestamp of the request",
+		"id":           "Unique identifier for the message",
+		"projectId":    "Project identifier",
+		"senderType":   "Type of sender (e.g., 'user' or 'assistant')",
+		"createdAt":    "ISO 8601 timestamp when the message was created",
+		"section":      "Chat section identifier",
+		"pastMessages": "Array of previous messages in the conversation",
+		"conversation": "Conversation context or history",
+		"chatHistory":  "History of the chat conversation",
+		"messages":     "Array of messages",
+		"role":         "Role of the message sender",
+		"content":      "Content of the message",
+		"response":     "Response from the AI agent",
+		"result":       "Result of the processing",
+		"data":         "Data payload",
+		"payload":      "Request payload data",
+		"body":         "Request body content",
+		"params":       "Request parameters",
+		"headers":      "Request headers",
+		"auth":         "Authentication information",
+		"token":        "Authentication token",
+		"apiKey":       "API key for authentication",
+		"model":        "AI model to use",
+		"temperature":  "Temperature setting for AI generation",
+		"maxTokens":    "Maximum number of tokens to generate",
+		"stream":       "Whether to stream the response",
+		"format":       "Response format",
+		"language":     "Language of the content",
+		"locale":       "Locale for the request",
+		"timezone":     "Timezone for the request",
 	}
 
 	if desc, exists := descriptions[strings.ToLower(fieldName)]; exists {
@@ -125,16 +154,45 @@ func (a *AgentAnalyzer) generateFieldDescription(fieldName string) string {
 
 func (a *AgentAnalyzer) generateFieldExample(fieldName string) string {
 	examples := map[string]string{
-		"query":     "What is the weather like today?",
-		"prompt":    "Analyze the following data and provide insights",
-		"input":     "Sample input data",
-		"message":   "Hello, how can I help you?",
-		"text":      "This is sample text to be processed",
-		"question":  "What are the latest developments in AI?",
-		"context":   "Additional context information",
-		"userId":    "user123",
-		"sessionId": "session456",
-		"timestamp": "2024-01-01T00:00:00Z",
+		"query":        "What is the weather like today?",
+		"prompt":       "Analyze the following data and provide insights",
+		"input":        "Sample input data",
+		"message":      "Hello, how can I help you?",
+		"text":         "This is sample text to be processed",
+		"question":     "What are the latest developments in AI?",
+		"context":      "Additional context information",
+		"userId":       "user123",
+		"sessionId":    "session456",
+		"timestamp":    "2024-01-01T00:00:00Z",
+		"id":           "msg_123456789",
+		"projectId":    "proj_abc123",
+		"senderType":   "user",
+		"createdAt":    "2024-01-01T12:00:00Z",
+		"section":      "general",
+		"pastMessages": "[]",
+		"conversation": "Previous conversation context",
+		"chatHistory":  "Previous chat messages",
+		"messages":     "[]",
+		"role":         "user",
+		"content":      "Hello, how can I help you?",
+		"response":     "I can help you with various tasks",
+		"result":       "Processing completed successfully",
+		"data":         "Sample data payload",
+		"payload":      "Request payload data",
+		"body":         "Request body content",
+		"params":       "Request parameters",
+		"headers":      "Request headers",
+		"auth":         "Bearer token123",
+		"token":        "abc123def456",
+		"apiKey":       "sk-1234567890abcdef",
+		"model":        "gpt-4",
+		"temperature":  "0.7",
+		"maxTokens":    "1000",
+		"stream":       "false",
+		"format":       "json",
+		"language":     "en",
+		"locale":       "en-US",
+		"timezone":     "UTC",
 	}
 
 	if example, exists := examples[strings.ToLower(fieldName)]; exists {
@@ -348,11 +406,30 @@ func (a *AgentAnalyzer) generateRequestSchemaWithAI(codeContext string, staticHi
 	// Convert static hints to JSON for AI context
 	hintsJSON, _ := json.Marshal(staticHints)
 
+	// Example payload structure for reference
+	examplePayload := `{
+  "id": "string",           // Unique identifier for the message
+  "projectId": "string",    // Project identifier
+  "userId": "string",       // User identifier
+  "message": "string",      // Content of the message
+  "senderType": "string",   // Type of sender ("user" or "assistant")
+  "createdAt": "string",    // ISO 8601 timestamp
+  "section": "string",      // Chat section identifier
+  "pastMessages": [         // Array of previous messages
+    {
+      // Same structure as parent
+    }
+  ]
+}`
+
 	prompt := fmt.Sprintf(`Analyze this AI agent code and generate a comprehensive JSON schema for the request payload of the main endpoint.
 
 %s
 
 Static Analysis Hints (JSON):
+%s
+
+Example AI Agent Payload Structure (for reference):
 %s
 
 Based on the comprehensive analysis above, generate a detailed JSON schema that includes:
@@ -363,17 +440,27 @@ Based on the comprehensive analysis above, generate a detailed JSON schema that 
 5. Field constraints, enums, and validation rules
 6. Nested objects and arrays where appropriate
 7. Common AI agent patterns (context, options, metadata, etc.)
+8. Chat/conversation patterns similar to the example payload structure
 
-The schema should be production-ready and comprehensive. Return only a valid JSON schema object.`, codeContext, string(hintsJSON))
+The schema should be production-ready and comprehensive. Pay special attention to:
+- Message/chat related fields (id, message, senderType, createdAt, section, pastMessages)
+- User and project identification fields
+- Array structures for conversation history
+- Proper string formats for timestamps and identifiers
+- Nested object structures for complex data
 
-	systemPrompt := `You are an expert API schema analyst specializing in AI agents. You excel at:
+Return only a valid JSON schema object.`, codeContext, string(hintsJSON), examplePayload)
+
+	systemPrompt := `You are an expert API schema analyst specializing in AI agents and chat/conversation systems. You excel at:
 - Analyzing code to understand API structure
-- Generating comprehensive JSON schemas
-- Identifying common AI agent patterns
+- Generating comprehensive JSON schemas for AI agents
+- Identifying common AI agent patterns, especially chat/conversation patterns
 - Creating realistic examples and descriptions
 - Ensuring schemas are production-ready
+- Understanding message flow and conversation context
+- Recognizing user identification and project management patterns
 
-Generate a detailed, accurate JSON schema based on the provided analysis.`
+Generate a detailed, accurate JSON schema based on the provided analysis. Focus on creating schemas that match common AI agent patterns, especially those used in chat handlers and conversation systems.`
 
 	response, err := a.ai.GenerateAI(prompt, systemPrompt, nil)
 	if err != nil {
@@ -452,6 +539,16 @@ func (a *AgentAnalyzer) generateFallbackRequestSchema(analysis *AgentAnalysis, s
 			property[constraint] = value
 		}
 
+		// Handle array types
+		if hint.IsArray {
+			property["type"] = "array"
+			if hint.ArrayItemType != "" {
+				property["items"] = map[string]interface{}{
+					"type": a.mapGoTypeToJSONType(hint.ArrayItemType),
+				}
+			}
+		}
+
 		properties[fieldName] = property
 
 		if hint.IsRequired {
@@ -459,8 +556,72 @@ func (a *AgentAnalyzer) generateFallbackRequestSchema(analysis *AgentAnalysis, s
 		}
 	}
 
-	// Add common AI agent fields if not already present
+	// Add common AI agent fields if not already present, including chat/conversation patterns
 	commonFields := map[string]map[string]interface{}{
+		"id": {
+			"type":        "string",
+			"description": "Unique identifier for the message",
+			"example":     "msg_123456789",
+		},
+		"projectId": {
+			"type":        "string",
+			"description": "Project identifier",
+			"example":     "proj_abc123",
+		},
+		"userId": {
+			"type":        "string",
+			"description": "Unique identifier for the user",
+			"example":     "user123",
+		},
+		"message": {
+			"type":        "string",
+			"description": "Content of the message",
+			"example":     "Hello, how can I help you?",
+		},
+		"senderType": {
+			"type":        "string",
+			"description": "Type of sender (e.g., 'user' or 'assistant')",
+			"example":     "user",
+			"enum":        []string{"user", "assistant", "system"},
+		},
+		"createdAt": {
+			"type":        "string",
+			"description": "ISO 8601 timestamp when the message was created",
+			"example":     "2024-01-01T12:00:00Z",
+			"format":      "date-time",
+		},
+		"section": {
+			"type":        "string",
+			"description": "Chat section identifier",
+			"example":     "general",
+		},
+		"pastMessages": {
+			"type":        "array",
+			"description": "Array of previous messages in the conversation",
+			"items": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id": map[string]interface{}{
+						"type":        "string",
+						"description": "Unique identifier for the message",
+					},
+					"message": map[string]interface{}{
+						"type":        "string",
+						"description": "Content of the message",
+					},
+					"senderType": map[string]interface{}{
+						"type":        "string",
+						"description": "Type of sender",
+					},
+					"createdAt": map[string]interface{}{
+						"type":        "string",
+						"description": "ISO 8601 timestamp",
+						"format":      "date-time",
+					},
+				},
+			},
+			"example": []interface{}{},
+		},
 		"query": {
 			"type":        "string",
 			"description": "The input query or prompt for the AI agent",
@@ -481,8 +642,13 @@ func (a *AgentAnalyzer) generateFallbackRequestSchema(analysis *AgentAnalysis, s
 	for fieldName, fieldDef := range commonFields {
 		if _, exists := properties[fieldName]; !exists {
 			properties[fieldName] = fieldDef
-			if fieldName == "query" {
-				required = append(required, fieldName)
+			// Mark essential fields as required
+			essentialFields := []string{"id", "message", "userId"}
+			for _, essential := range essentialFields {
+				if fieldName == essential {
+					required = append(required, fieldName)
+					break
+				}
 			}
 		}
 	}
