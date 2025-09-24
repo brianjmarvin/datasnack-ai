@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +32,4 @@ func Execute() {
 
 func init() {
 	log.SetFlags(log.Lshortfile)
-	if err := godotenv.Load(".env"); err != nil {
-		log.Println("Error loading .env file")
-	}
 }

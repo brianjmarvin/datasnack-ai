@@ -78,6 +78,12 @@ func NewEndpointEvaluator(ai AIClient, jsonConfigFile, agentPurpose string, test
 		return nil, fmt.Errorf("failed to load endpoint config: %w", err)
 	}
 
+	return NewEndpointEvaluatorWithConfig(ai, endpointConfig, agentPurpose, testConfig)
+}
+
+// NewEndpointEvaluatorWithConfig creates a new endpoint evaluator with pre-loaded endpoint configuration
+func NewEndpointEvaluatorWithConfig(ai AIClient, endpointConfig *EndpointConfig, agentPurpose string, testConfig TestConfiguration) (*EndpointEvaluator, error) {
+
 	// Wait for the endpoint to be ready (health check)
 	healthEndpoint, hasHealth := endpointConfig.Endpoints["health"]
 	if hasHealth {
@@ -95,7 +101,7 @@ func NewEndpointEvaluator(ai AIClient, jsonConfigFile, agentPurpose string, test
 
 	return &EndpointEvaluator{
 		ai:                ai,
-		jsonConfigFile:    jsonConfigFile,
+		jsonConfigFile:    "", // Not used when config is provided directly
 		agentPurpose:      agentPurpose,
 		testConfiguration: testConfig,
 		callHistory:       []CallMetadata{},
@@ -1561,4 +1567,14 @@ func (e *EndpointEvaluator) analyzeResults() {
 		e.stressTestResults.PerformanceMetrics["total_tests"] = len(e.callHistory)
 		e.stressTestResults.PerformanceMetrics["vulnerability_count"] = len(allVulnerabilities)
 	}
+}
+
+// SetEndpointConfig sets the endpoint configuration for API mode
+func (e *EndpointEvaluator) SetEndpointConfig(config *EndpointConfig) {
+	e.endpointConfig = config
+}
+
+// GetCallHistory returns the call history for API responses
+func (e *EndpointEvaluator) GetCallHistory() []CallMetadata {
+	return e.callHistory
 }
