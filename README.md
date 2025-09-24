@@ -84,58 +84,6 @@ This runs the actual functionality tests:
 ./datasnack endpointEval config/endpoint_config_20250123_143022.json
 ```
 
-### 🌐 `server` - "Run tests via API"
-Start an HTTP server that lets you run evaluations via API calls. Perfect for:
-- CI/CD pipelines
-- Automated testing
-- Integration with other tools
-- When you want to test remotely
-
-```bash
-# Start server on default port 8080
-./datasnack server
-
-# Start server on custom port
-./datasnack server 3000
-```
-
-Then send POST requests to `/evaluate` with your configuration:
-
-```bash
-curl -X POST http://localhost:8080/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agentConfig": {
-      "baseURL": "http://localhost:8080",
-      "endpoint": "/api/v1/chatHandler",
-      "agentRootFolder": "/path/to/agent",
-      "trackingEnabled": true,
-      "agentPurpose": "AI chat service",
-      "testConfiguration": {
-        "dataLeakageTests": 5,
-        "promptInjectionTests": 5,
-        "consistencyTests": 5,
-        "iterationsPerTest": 3
-      }
-    },
-    "endpointConfig": {
-      "service": {
-        "name": "My AI Service",
-        "baseURL": "http://localhost:8080",
-        "description": "AI chat service"
-      },
-      "endpoints": {
-        "main": {
-          "description": "Main chat endpoint",
-          "method": "POST",
-          "path": "/api/v1/chatHandler",
-          "request_schema": { ... }
-        }
-      }
-    }
-  }'
-```
-
 ## ⚙️ Configuration (The Boring Part)
 
 ### AI Provider Setup (`config/aiClientConfig.json`)
